@@ -9,8 +9,9 @@ export async function connectAndUpload(
   {
     zipPath,
     remoteZipPath,
-    connectInfos
-  }: Pick<DeployOpts, 'zipPath' | 'remoteZipPath' | 'connectInfos'>
+    connectInfos,
+    onServerReady
+  }: Pick<DeployOpts, 'zipPath' | 'remoteZipPath' | 'connectInfos' | 'onServerReady'>
 ) {
   const sshServers: Client[] = []
 
@@ -19,7 +20,11 @@ export async function connectAndUpload(
     sshServers.push(sshServer)
 
     sshServer
-      .on('ready', () => {
+      .on('ready', async () => {
+        if (onServerReady) {
+          await onServerReady(sshServer, connectInfo)
+        }
+
         console.log(`--连接服务器 ${connectInfo.name ?? ''}: ${connectInfo.host} 成功--`)
 
         sshServer.sftp((err, sftp) => {

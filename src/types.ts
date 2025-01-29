@@ -1,11 +1,11 @@
-import type { ConnectConfig } from 'ssh2'
+import type { Client, ConnectConfig } from 'ssh2'
 
 
 export interface DeployOpts {
   /**
    * ssh 连接信息
    */
-  connectInfos: (ConnectConfig & { name?: string })[]
+  connectInfos: ConnectInfo[]
 
   /**
    * 打包命令
@@ -59,4 +59,11 @@ export interface DeployOpts {
    * @example '/home/nginx/html'
    */
   remoteCwd?: string
+
+  /**
+   * 服务器准备完毕的回调
+   */
+  onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
 }
+
+export type ConnectInfo = (ConnectConfig & { name?: string })

@@ -24,6 +24,7 @@ export function getOpts(opts: DeployOpts): Required<DeployOpts> {
     deployCmd,
     remoteCwd,
     buildCmd: 'npm run build',
+    onServerReady: async () => { }
   }
 }
 
