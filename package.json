@@ -1,10 +1,10 @@
 {
   "name": "@jl-org/deploy",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "一键部署项目到服务器",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
-  "type": "module",
+  "type": "commonjs",
   "types": "dist/typings/index.d.ts",
   "files": [
     "/dist"

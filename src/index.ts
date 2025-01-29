@@ -4,7 +4,7 @@ import type { DeployOpts } from './types'
 import { startZip } from './startZip'
 import { connectAndUpload } from './connectAndUpload'
 import { unzipAndDeploy } from './unzipAndDeploy'
-import { unlinkSync } from 'fs'
+import { rmSync } from 'fs'
 import { getOpts } from './getOpts'
 
 
@@ -17,7 +17,7 @@ export async function deploy(deployOpts: DeployOpts) {
     await startZip(opts)
     sshServers = await connectAndUpload(opts)
     await unzipAndDeploy(sshServers, opts.deployCmd)
-    unlinkSync(opts.zipPath)
+    rmSync(opts.zipPath)
   }
   catch (error: any) {
     console.error('Error:', error.message)

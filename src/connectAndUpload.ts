@@ -1,5 +1,6 @@
 import { Client } from 'ssh2'
 import type { DeployOpts } from './types'
+import { join } from 'path'
 
 /**
  * 将 zip 文件传输至远程服务器
@@ -25,6 +26,9 @@ export async function connectAndUpload(
           if (err) {
             return reject(err)
           }
+
+          const zipDir = join(zipPath, '..')
+          sshServer.exec(`mkdir -p ${zipDir}`, () => { })
 
           sftp.fastPut(zipPath, remoteZipPath, {}, (err) => {
             if (err) {

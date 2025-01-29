@@ -33,15 +33,22 @@ export interface DeployOpts {
   distPath: string
   /** 
    * 压缩打包文件夹（distPath）后的文件路径
-   * @example path.resolve(__dirname, '../dist.tar.zip')
+   * @example path.resolve(__dirname, '../dist.tar.gz')
    */
   zipPath: string
 
   /**
    * 远程服务器的压缩文件路径
-   * @example '/home/nginx/html/dist.tar.zip'
+   * @example '/home/nginx/html/dist.tar.gz'
    */
   remoteZipPath: string
+  /**
+   * 远程服务器的解压目录路径
+   * ### 不可以和 remoteZipPath 目录相同
+   * 因为 remoteUnzipDir 会先被删除再创建，他是你的项目目录
+   * @example '/home/nginx/html/project'
+   */
+  remoteUnzipDir: string
   /**
    * 解压到远程服务器的目录
    * @example 'project/'

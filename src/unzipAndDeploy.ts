@@ -18,7 +18,10 @@ export async function unzipAndDeploy(
         console.log('终端执行命令:', deployCmd)
 
         stream
-          .on('exit', () => resolve())
+          .on('exit', () => {
+            console.log('命令执行完毕')
+            resolve()
+          })
           .stderr.on('data', data => console.error('Error:', data.toString()))
 
         stream.end(deployCmd)
