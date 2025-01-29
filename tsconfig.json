@@ -1,20 +1,20 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "emitDeclarationOnly": true,
+    "target": "ES2015",
+    "emitDeclarationOnly": false,
+    "moduleResolution": "bundler",
     "baseUrl": ".",
+    "lib": ["ESNext", "DOM"],
     "paths": {
       "@/*": [
         "./src/*"
       ],
     },
-    "outDir": "dist",
     "declaration": true,
     "declarationDir": "./dist/typings",
     "skipLibCheck": true,
-    "strict": true
+    "strict": false,
+    "esModuleInterop": true
   },
   "include": [
     "src/**/*.ts"
