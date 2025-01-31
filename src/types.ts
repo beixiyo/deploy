@@ -14,6 +14,7 @@ export interface DeployOpts {
   buildCmd?: string
   /**
    * 远程服务器部署命令
+   * ### 注意：传递此参数，末尾必须有回车，否则无法执行。此 bug 问题在于 ssh2
    * @default
    * `
    *   cd ${remoteCwd} &&
@@ -61,9 +62,25 @@ export interface DeployOpts {
   remoteCwd?: string
 
   /**
-   * 服务器准备完毕的回调
+   * 是否需要删除远程服务器的压缩文件
+   * @default true
+   */
+  needRemoveZip?: boolean
+
+  /**
+   * 服务器准备完毕的回调，调用次数和 connectInfos 长度相同
    */
   onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
+  /**
+   * 自定义上传行为，如果传递了该函数，则会覆盖默认上传行为
+   * @param createServer 一个函数，用于创建 ssh2.Client 对象
+   * @returns 返回一个数组，数组中的元素是 ssh2.Client 对象
+   */
+  customUpload?: (createServer: () => Client) => Promise<Client[]>
+  /**
+   * 自定义部署行为，如果传递了该函数，则会覆盖默认部署行为，deployCmd 参数不会生效
+   */
+  customDeploy?: (servers: Client[], connectInfos: ConnectInfo[]) => Promise<void>
 }
 
 export type ConnectInfo = (ConnectConfig & { name?: string })

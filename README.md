@@ -4,7 +4,7 @@
 ## 安装
 
 ```bash
-npm i @jl-org/deploy
+npm i @jl-org/deploy -D
 ```
 
 
@@ -16,6 +16,7 @@ touch scripts/deploy.cjs
 node scripts/deploy.cjs
 ```
 
+`scripts/deploy.cjs`
 ```js
 // @ts-check
 const { deploy } = require('@jl-org/deploy')
@@ -38,6 +39,12 @@ deploy({
       // privateKey: readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8'),
     },
   ],
+
+  /**
+   * 打包命令
+   * @default 'npm run build'
+   */
+  buildCmd: 'npm run build',
 
   /** 
    * 执行打包命令后文件夹路径
@@ -98,5 +105,85 @@ export interface DeployOpts {
    * @example '/home/nginx/html'
    */
   remoteCwd?: string
+
+  /**
+   * 服务器准备完毕的回调，调用次数和 connectInfos 长度相同
+   */
+  onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
+  /**
+   * 自定义上传行为，如果传递了该函数，则会覆盖默认上传行为
+   * @param createServer 一个函数，用于创建 ssh2.Client 对象
+   * @returns 返回一个数组，数组中的元素是 ssh2.Client 对象
+   */
+  customUpload?: (createServer: () => Client) => Promise<Client[]>
+  /**
+   * 自定义部署行为，如果传递了该函数，则会覆盖默认部署行为，deployCmd 参数不会生效
+   */
+  customDeploy?: (servers: Client[], connectInfos: ConnectInfo[]) => Promise<void>
 }
+```
+
+---
+
+
+## 根据环境执行不同命令
+
+`package.json`
+```json
+{
+  "scripts": {
+    "deploy-dev": "node scripts/deploy.cjs dev",
+    "deploy-prod": "node scripts/deploy.cjs production"
+  }
+}
+```
+
+`scripts/deploy.cjs`
+```js
+// @ts-check
+const { deploy } = require('@jl-org/deploy')
+const { resolve } = require('node:path')
+const { homedir } = require('node:os')
+const { readFileSync } = require('node:fs')
+
+const privateKey = readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8')
+
+/** 
+ * 命令执行的模式
+ * @example node scripts/deploy.cjs dev
+ */
+const mode = process.argv.slice(2)[0] || 'dev'
+
+/**
+ * @type {Record<'dev' | 'production', Omit<import('@jl-org/deploy').DeployOpts, 'connectInfos'>>}
+ */
+const config = {
+  dev: {
+    buildCmd: 'pnpm build',
+    distPath: resolve(__dirname, '../dist'),
+    zipPath: resolve(__dirname, '../dist.tar.gz'),
+    remoteZipPath: '/root/dist.tar.gz',
+    remoteUnzipDir: '/root/test-project',
+  },
+  production: {
+    buildCmd: 'pnpm build',
+    distPath: resolve(__dirname, '../dist'),
+    zipPath: resolve(__dirname, '../dist.tar.gz'),
+    remoteZipPath: '/root/dist.tar.gz',
+    remoteUnzipDir: '/root/prod-project',
+  }
+}
+
+const curConfig = config[mode]
+deploy({
+  ...curConfig,
+  connectInfos: [
+    {
+      host: 'Your Host',
+      username: 'Your Username',
+      privateKey,
+      name: '服务器名称，可选项',
+    },
+  ],
+})
 ```

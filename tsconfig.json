@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2015",
+    "target": "ES6",
     "emitDeclarationOnly": false,
     "moduleResolution": "bundler",
     "baseUrl": ".",

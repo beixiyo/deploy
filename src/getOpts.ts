@@ -1,7 +1,14 @@
 import type { DeployOpts } from './types'
 
 
-export function getOpts(opts: DeployOpts): Required<DeployOpts> {
+export function getOpts(opts: DeployOpts): Required<
+  Omit<
+    DeployOpts,
+    | 'onServerReady'
+    | 'customUpload'
+    | 'customDeploy'
+  >
+> {
   const remoteCwd = opts.remoteCwd ?? '/'
   /**
    * - 进入服务器暂存地址
@@ -20,11 +27,11 @@ export function getOpts(opts: DeployOpts): Required<DeployOpts> {
   `
 
   return {
-    ...opts,
     deployCmd,
     remoteCwd,
     buildCmd: 'npm run build',
-    onServerReady: async () => { }
+    needRemoveZip: true,
+    ...opts,
   }
 }
 

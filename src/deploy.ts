@@ -15,9 +15,16 @@ export async function deploy(deployOpts: DeployOpts) {
   try {
     await build(opts.buildCmd)
     await startZip(opts)
-    sshServers = await connectAndUpload(opts)
-    await unzipAndDeploy(sshServers, opts.deployCmd)
-    rmSync(opts.zipPath)
+
+    sshServers = deployOpts.customUpload
+      ? await deployOpts.customUpload(() => new Client())
+      : await connectAndUpload(opts)
+
+    deployOpts.customDeploy
+      ? await deployOpts.customDeploy(sshServers, deployOpts.connectInfos)
+      : await unzipAndDeploy(sshServers, opts.deployCmd)
+
+    opts.needRemoveZip && rmSync(opts.zipPath)
   }
   catch (error: any) {
     console.error('Error:', error.message)
