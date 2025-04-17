@@ -31,6 +31,7 @@ export function getOpts(opts: DeployOpts): Required<
     remoteCwd,
     buildCmd: 'npm run build',
     needRemoveZip: true,
+    uploadRetryCount: 3,
     ...opts,
   }
 }

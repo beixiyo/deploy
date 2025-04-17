@@ -60,14 +60,14 @@ deploy({
    * 上传到远程服务器的压缩文件路径
    * @example '/home/nginx/dist.tar.gz'
    */
-  remoteZipPath: '/root/dist.tar.gz',
+  remoteZipPath: '/home/dist.tar.gz',
   /**
    * 远程服务器的解压目录路径
    * ### 不可以和 remoteZipPath 目录相同
    * 因为 remoteUnzipDir 会先被删除再创建，remoteUnzipDir 是你的项目目录
    * @example '/home/nginx/html/project'
    */
-  remoteUnzipDir: '/root/test-project',
+  remoteUnzipDir: '/home/test-project',
 })
 ```
 
@@ -162,15 +162,15 @@ const config = {
     buildCmd: 'pnpm build',
     distPath: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
-    remoteZipPath: '/root/dist.tar.gz',
-    remoteUnzipDir: '/root/test-project',
+    remoteZipPath: '/home/dist.tar.gz',
+    remoteUnzipDir: '/home/test-project',
   },
   production: {
     buildCmd: 'pnpm build',
     distPath: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
-    remoteZipPath: '/root/dist.tar.gz',
-    remoteUnzipDir: '/root/prod-project',
+    remoteZipPath: '/home/dist.tar.gz',
+    remoteUnzipDir: '/home/prod-project',
   }
 }
 

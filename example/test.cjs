@@ -14,7 +14,7 @@ const connectInfos = [
   },
 ]
 
-/** 
+/**
  * 命令执行的模式
  * @example node deploy.cjs dev
  */
@@ -28,24 +28,29 @@ const config = {
     buildCmd: 'pnpm build',
     distPath: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
-    remoteZipPath: '/root/dist.tar.gz',
-    remoteUnzipDir: '/root/test-project',
+    remoteZipPath: '/home/dist.tar.gz',
+    remoteUnzipDir: '/home/test-project',
+
+
+    /***************************************************
+     *                  自定义可选配置
+     ***************************************************/
 
     // deployCmd: `cd / &&
-    // rm -rf /root/test-project &&
-    // mkdir -p /root/test-project &&
-    // tar -xzf /root/dist.tar.gz -C /root/test-project &&
-    // rm -rf /root/dist.tar.gz &&
+    // rm -rf /home/test-project &&
+    // mkdir -p /home/test-project &&
+    // tar -xzf /home/dist.tar.gz -C /home/test-project &&
+    // rm -rf /home/dist.tar.gz &&
     // exit
     // `,
 
-    // deployCmd: `rm -rf /root/test-project && exit
+    // deployCmd: `rm -rf /home/test-project && exit
     // `,
 
     // async customDeploy(servers) {
     //   console.log('开始执行 customDeploy 命令')
     //   return new Promise((resolve, reject) => {
-    //     servers[0].exec(`echo "test customDeploy" > /root/customDeploy.txt`, () => { resolve() })
+    //     servers[0].exec(`echo "test customDeploy" > /home/customDeploy.txt`, () => { resolve() })
     //   })
     // },
     // async customUpload(createServer) {
@@ -53,7 +58,7 @@ const config = {
     //   const serverArr = [server]
     //   return new Promise((resolve, reject) => {
     //     server.on('ready', () => {
-    //       server.exec(`echo "test customUpload" > /root/customUpload.txt`, () => {
+    //       server.exec(`echo "test customUpload" > /home/customUpload.txt`, () => {
     //         resolve(serverArr)
     //       })
     //     })
@@ -66,8 +71,8 @@ const config = {
     buildCmd: 'pnpm build',
     distPath: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
-    remoteZipPath: '/root/dist.tar.gz',
-    remoteUnzipDir: '/root/prod-project',
+    remoteZipPath: '/home/dist.tar.gz',
+    remoteUnzipDir: '/home/prod-project',
   }
 }
 

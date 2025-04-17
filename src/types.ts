@@ -27,12 +27,12 @@ export interface DeployOpts {
    */
   deployCmd?: string
 
-  /** 
+  /**
    * 执行打包命令后的打包文件夹路径
    * @example path.resolve(__dirname, '../dist')
    */
   distPath: string
-  /** 
+  /**
    * 压缩打包文件夹（distPath）后的文件路径
    * @example path.resolve(__dirname, '../dist.tar.gz')
    */
@@ -63,6 +63,12 @@ export interface DeployOpts {
    * @default true
    */
   needRemoveZip?: boolean
+
+  /**
+   * 上传失败重试次数
+   * @default 3
+   */
+  uploadRetryCount?: number
 
   /**
    * 服务器准备完毕的回调，调用次数和 connectInfos 长度相同
