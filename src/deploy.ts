@@ -27,9 +27,9 @@ export async function deploy(deployOpts: DeployOpts) {
       deployOpts.customDeploy
         ? await deployOpts.customDeploy(sshServers, item.connectInfos)
         : await unzipAndDeploy(sshServers, item.deployCmd)
-
-      item.needRemoveZip && rmSync(item.zipPath)
     }
+
+    opts.needRemoveZip && rmSync(opts.zipPath)
   }
   catch (error: any) {
     console.error('Error:', error.message)
