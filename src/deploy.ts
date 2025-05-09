@@ -6,6 +6,7 @@ import { connectAndUpload } from './connectAndUpload'
 import { unzipAndDeploy } from './unzipAndDeploy'
 import { rmSync } from 'fs'
 import { getOpts } from './getOpts'
+import { splitDeployOpts } from './tool'
 
 
 export async function deploy(deployOpts: DeployOpts) {
@@ -16,15 +17,19 @@ export async function deploy(deployOpts: DeployOpts) {
     await build(opts.buildCmd)
     await startZip(opts)
 
-    sshServers = deployOpts.customUpload
-      ? await deployOpts.customUpload(() => new Client())
-      : await connectAndUpload(opts)
+    const singleConnectInfo = splitDeployOpts(opts)
 
-    deployOpts.customDeploy
-      ? await deployOpts.customDeploy(sshServers, deployOpts.connectInfos)
-      : await unzipAndDeploy(sshServers, opts.deployCmd)
+    for (const item of singleConnectInfo) {
+      sshServers = deployOpts.customUpload
+        ? await deployOpts.customUpload(() => new Client())
+        : await connectAndUpload(item)
 
-    opts.needRemoveZip && rmSync(opts.zipPath)
+      deployOpts.customDeploy
+        ? await deployOpts.customDeploy(sshServers, item.connectInfos)
+        : await unzipAndDeploy(sshServers, item.deployCmd)
+
+      item.needRemoveZip && rmSync(item.zipPath)
+    }
   }
   catch (error: any) {
     console.error('Error:', error.message)

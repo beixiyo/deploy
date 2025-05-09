@@ -1,3 +1,5 @@
+import type { DeployOpts } from './types'
+
 /**
  * 失败后自动重试请求
  * @param task 任务函数，返回一个 Promise
@@ -22,4 +24,22 @@ export function retryTask<T>(
         return retryTask(task, remainingRetries) // 递归调用 retryTask
       }
     })
+}
+
+/**
+ * - 把配置信息的 connectInfos 拆分成多个配置信息
+ * - 每个配置信息只有一个 connectInfo
+ */
+export function splitDeployOpts(deployOpts: DeployOpts) {
+  const res: DeployOpts[] = []
+
+  for (let i = 0; i < deployOpts.connectInfos.length; i++) {
+     const connectInfo = deployOpts.connectInfos[i]
+     res.push({
+        ...deployOpts,
+        connectInfos: [connectInfo],
+     })
+  }
+
+  return res
 }
