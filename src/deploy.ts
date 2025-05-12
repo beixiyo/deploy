@@ -13,6 +13,19 @@ export async function deploy(deployOpts: DeployOpts) {
   const sshServers: Client[] = []
   const opts = getOpts(deployOpts)
 
+  if (
+    !opts.distDir
+    || !opts.zipPath
+    || !opts.remoteZipPath
+    || !opts.remoteUnzipDir
+  ) {
+    throw new Error('distDir, zipPath, remoteZipPath, remoteUnzipDir 必须配置')
+  }
+
+  if (!opts.connectInfos.length) {
+    throw new Error('connectInfos 不能为空')
+  }
+
   try {
     await build(opts.buildCmd)
     await startZip(opts)

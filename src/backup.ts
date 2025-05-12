@@ -8,18 +8,18 @@ export async function backup(
   {
     sftp,
     connectInfo,
-    remoteBackupPath,
+    remoteBackupDir,
     zipPath,
     maxBackupCount,
     sshServer
   }: BackupOpts
 ) {
   const backupFileName = `${getLocalToday()}.tar.gz`
-  const remoteBackupFileFullName = toUnixPath(join(remoteBackupPath, backupFileName))
+  const remoteBackupFileFullName = toUnixPath(join(remoteBackupDir, backupFileName))
 
   try {
     // 确保远程备份目录存在
-    await ensureRemoteDirExists(sshServer, sftp, remoteBackupPath)
+    await ensureRemoteDirExists(sshServer, sftp, remoteBackupDir)
     await proceedWithBackup()
   }
   catch (error) {
@@ -57,7 +57,7 @@ export async function backup(
     if (maxBackupCount && maxBackupCount > 0) {
       try {
         const files = await new Promise<any[]>((res, rej) => {
-          sftp.readdir(remoteBackupPath, (err, list) => {
+          sftp.readdir(remoteBackupDir, (err, list) => {
             if (err) return rej(err)
             res(list)
           })
@@ -71,7 +71,7 @@ export async function backup(
           const filesToDelete = backupFiles.slice(0, backupFiles.length - maxBackupCount)
 
           for (const fileToDelete of filesToDelete) {
-            const filePathToDelete = toUnixPath(join(remoteBackupPath, fileToDelete.filename))
+            const filePathToDelete = toUnixPath(join(remoteBackupDir, fileToDelete.filename))
 
             await new Promise<void>((resDel, rejDel) => {
               sftp.unlink(filePathToDelete, (delErr) => {
@@ -100,7 +100,7 @@ export async function backup(
 type BackupOpts = {
   sftp: SFTPWrapper
   connectInfo: ConnectInfo
-  remoteBackupPath: string
+  remoteBackupDir: string
   zipPath: string
   maxBackupCount?: number
   sshServer: Client

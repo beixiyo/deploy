@@ -26,7 +26,7 @@ const mode = process.argv.slice(2)[0] || 'dev'
 const config = {
   dev: {
     buildCmd: 'pnpm build',
-    distPath: resolve(__dirname, '../dist'),
+    distDir: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
     remoteZipPath: '/home/dist.tar.gz',
     remoteUnzipDir: '/home/test-project',
@@ -69,7 +69,7 @@ const config = {
   },
   production: {
     buildCmd: 'pnpm build',
-    distPath: resolve(__dirname, '../dist'),
+    distDir: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
     remoteZipPath: '/home/dist.tar.gz',
     remoteUnzipDir: '/home/prod-project',

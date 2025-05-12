@@ -113,7 +113,7 @@ export async function ensureRemoteDirExists(
         console.log(`SFTP: 路径 ${path} 不存在，尝试创建它`)
 
         // 使用 mkdir -p 来递归创建目录
-        // 注意: 确保 remoteBackupPath 对于 shell 是安全的
+        // 注意: 确保 remoteBackupDir 对于 shell 是安全的
         const command = `mkdir -p ${path}`
         console.log(`SSH: 执行命令: ${command}`)
 

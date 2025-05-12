@@ -31,9 +31,9 @@ export interface DeployOpts {
    * 执行打包命令后的打包文件夹路径
    * @example path.resolve(__dirname, '../dist')
    */
-  distPath: string
+  distDir: string
   /**
-   * 压缩打包文件夹（distPath）后的文件路径
+   * 压缩打包文件夹（distDir）后的文件路径
    * @example path.resolve(__dirname, '../dist.tar.gz')
    */
   zipPath: string
@@ -55,11 +55,11 @@ export interface DeployOpts {
    * 远程服务器备份目录，用于备份当前压缩包。
    * 不设置则不备份
    */
-  remoteBackupPath?: string
+  remoteBackupDir?: string
 
   /**
    * 最大备份数量
-   * 如果配置了 remoteBackupPath，并且备份目录中的压缩包数量超过了此值，则会删除最早的备份
+   * 如果配置了 remoteBackupDir，并且备份目录中的压缩包数量超过了此值，则会删除最早的备份
    * @default 5
    */
   maxBackupCount?: number

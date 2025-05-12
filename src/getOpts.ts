@@ -8,7 +8,7 @@ export function getOpts(opts: DeployOpts): Required<
     | 'onServerReady'
     | 'customUpload'
     | 'customDeploy'
-    | 'remoteBackupPath'
+    | 'remoteBackupDir'
     | 'maxBackupCount'
   >
 > {

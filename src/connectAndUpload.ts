@@ -38,7 +38,7 @@ function attemptUploadToServer(
     connectInfo,
     zipPath,
     remoteZipPath,
-    remoteBackupPath,
+    remoteBackupDir,
     maxBackupCount,
     onServerReady,
   }: AttemptUploadToServerOpts
@@ -73,12 +73,12 @@ function attemptUploadToServer(
                 return reject(err)
               }
 
-              if (remoteBackupPath) {
+              if (remoteBackupDir) {
                 await backup({
                   sftp,
                   connectInfo,
                   zipPath,
-                  remoteBackupPath,
+                  remoteBackupDir,
                   maxBackupCount,
                   sshServer
                 })
@@ -118,7 +118,7 @@ type AttemptUploadToServerOpts = {
   connectInfo: ConnectInfo
   zipPath: string
   remoteZipPath: string
-  remoteBackupPath?: string
+  remoteBackupDir?: string
   maxBackupCount?: number
   onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
 }

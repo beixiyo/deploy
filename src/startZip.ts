@@ -9,19 +9,19 @@ import type { DeployOpts } from './types'
  */
 export async function startZip(
   {
-    distPath,
+    distDir,
     zipPath
-  }: Pick<DeployOpts, 'zipPath' | 'distPath'>
+  }: Pick<DeployOpts, 'zipPath' | 'distDir'>
 ) {
   return new Promise((resolve, reject) => {
     console.log('---开始压缩---')
 
-    // 1. 校验 distPath 是否存在且为目录
-    if (!existsSync(distPath)) {
-      return reject(new Error(`打包目录 ${distPath} 不存在`))
+    // 1. 校验 distDir 是否存在且为目录
+    if (!existsSync(distDir)) {
+      return reject(new Error(`打包目录 ${distDir} 不存在`))
     }
-    if (!lstatSync(distPath).isDirectory()) {
-      return reject(new Error(`路径 ${distPath} 不是一个目录`))
+    if (!lstatSync(distDir).isDirectory()) {
+      return reject(new Error(`路径 ${distDir} 不是一个目录`))
     }
 
     // 2. 确保 zipPath 的父目录存在
@@ -60,7 +60,7 @@ export async function startZip(
     // 开始压缩
     archive.pipe(output)
     // 文件夹压缩
-    archive.directory(distPath, false)
+    archive.directory(distDir, false)
     archive.finalize()
 
     // 监听流的打包
