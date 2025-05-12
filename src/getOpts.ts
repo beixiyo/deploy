@@ -1,3 +1,4 @@
+import { toUnixPath } from './tool'
 import type { DeployOpts } from './types'
 
 
@@ -7,6 +8,7 @@ export function getOpts(opts: DeployOpts): Required<
     | 'onServerReady'
     | 'customUpload'
     | 'customDeploy'
+    | 'remoteBackupPath'
   >
 > {
   const remoteCwd = opts.remoteCwd ?? '/'
@@ -34,11 +36,4 @@ export function getOpts(opts: DeployOpts): Required<
     uploadRetryCount: 3,
     ...opts,
   }
-}
-
-/**
- * 把路径转成类似 unix 风格的路径
- */
-function toUnixPath(path: string): string {
-  return path.replace(/\\/g, '/')
 }

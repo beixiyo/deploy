@@ -1,17 +1,46 @@
-import { Client } from 'ssh2'
-import type { DeployOpts, ConnectInfo } from './types' // 引入 ConnectInfo
-import { retryTask } from './tool'
+import { Client, type SFTPWrapper } from 'ssh2'
+import type { DeployOpts, ConnectInfo } from './types'
+import { getLocalToday, retryTask, toUnixPath } from './tool'
+import { join } from 'node:path'
 
+
+/**
+ * 将 zip 文件传输至远程服务器
+ */
+export async function connectAndUpload(
+  opts: DeployOpts
+): Promise<Client[]> {
+  // 为每个服务器创建带重试的任务
+  const uploadTasks = opts.connectInfos.map((connectInfo) =>
+    retryTask(
+      () => attemptUploadToServer({
+        connectInfo,
+        ...opts
+      }),
+      opts.uploadRetryCount
+    )
+  )
+
+  // 等待所有上传任务完成（包括重试）
+  // Promise.all 会在任何一个任务最终失败时立即 reject
+  const successfulServers = await Promise.all(uploadTasks)
+
+  // 返回所有成功连接并上传的 sshServer 实例
+  return successfulServers
+}
 
 /**
  * 尝试连接并上传单个服务器
  */
 function attemptUploadToServer(
-  connectInfo: ConnectInfo,
-  zipPath: string,
-  remoteZipPath: string,
-  onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
-): Promise<Client> { // 返回 Client 以便后续使用
+  {
+    connectInfo,
+    zipPath,
+    remoteZipPath,
+    remoteBackupPath,
+    onServerReady,
+  }: AttemptUploadToServerOpts
+): Promise<Client> {
   return new Promise<Client>((resolve, reject) => {
     const sshServer = new Client()
 
@@ -32,13 +61,22 @@ function attemptUploadToServer(
               return reject(err)
             }
 
-            sftp.fastPut(zipPath, remoteZipPath, {}, (err) => {
+            sftp.fastPut(zipPath, remoteZipPath, {}, async (err) => {
               if (err) {
                 console.error(`---${connectInfo.name ?? ''}: 压缩包上传失败 (fastPut 错误)---`)
                 // 上传失败时也需要销毁连接
                 sshServer.end()
                 sshServer.destroy()
                 return reject(err)
+              }
+
+              if (remoteBackupPath) {
+                await backup({
+                  sftp,
+                  connectInfo,
+                  zipPath,
+                  remoteBackupPath
+                })
               }
 
               console.log(`---${connectInfo.name ?? ''}: 压缩包上传成功---`)
@@ -69,31 +107,60 @@ function attemptUploadToServer(
   })
 }
 
-
-/**
- * 将 zip 文件传输至远程服务器
- */
-export async function connectAndUpload(
+async function backup(
   {
+    sftp,
+    connectInfo,
+    remoteBackupPath,
     zipPath,
-    remoteZipPath,
-    connectInfos,
-    uploadRetryCount,
-    onServerReady
-  }: Pick<DeployOpts, 'zipPath' | 'remoteZipPath' | 'connectInfos' | 'onServerReady' | 'uploadRetryCount'>
-): Promise<Client[]> {
-  // 为每个服务器创建带重试的任务
-  const uploadTasks = connectInfos.map((connectInfo) =>
-    retryTask(
-      () => attemptUploadToServer(connectInfo, zipPath, remoteZipPath, onServerReady),
-      uploadRetryCount
-    )
-  )
+  }: BackupOpts
+) {
+  const backupFileName = `${getLocalToday()}.tar.gz`
+  const remoteBackupFileFullName = toUnixPath(join(remoteBackupPath, backupFileName))
 
-  // 等待所有上传任务完成（包括重试）
-  // Promise.all 会在任何一个任务最终失败时立即 reject
-  const successfulServers = await Promise.all(uploadTasks)
+  return new Promise<void>((resolve, reject) => {
+    try {
+      // 检查备份文件是否存在
+      sftp.stat(remoteBackupFileFullName, (statErr) => {
+        // 文件不存在或发生其他错误，尝试上传
+        if (statErr) {
+          console.log(`---${connectInfo.name ?? ''}: 准备上传备份文件到 ${remoteBackupFileFullName}---`)
 
-  // 返回所有成功连接并上传的 sshServer 实例
-  return successfulServers
+          sftp.fastPut(zipPath, remoteBackupFileFullName, {}, (backupUploadErr) => {
+            if (backupUploadErr) {
+              console.error(`---${connectInfo.name ?? ''}: 备份压缩包上传失败 (${remoteBackupFileFullName})---`, backupUploadErr)
+              reject(backupUploadErr)
+            }
+            else {
+              console.log(`---${connectInfo.name ?? ''}: 备份压缩包上传成功 (${remoteBackupFileFullName})---`)
+              resolve()
+            }
+          })
+        }
+        else {
+          console.warn(`---${connectInfo.name ?? ''}: 备份文件 ${remoteBackupFileFullName} 已存在，跳过备份---`)
+          resolve()
+        }
+      })
+    }
+    catch (error) {
+      reject(error)
+      console.error(`---${connectInfo.name ?? ''}: 备份文件 ${remoteBackupFileFullName} 上传失败 (${remoteBackupFileFullName})---`, error)
+    }
+  })
+}
+
+type AttemptUploadToServerOpts = {
+  connectInfo: ConnectInfo
+  zipPath: string
+  remoteZipPath: string
+  remoteBackupPath?: string
+  onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
+}
+
+type BackupOpts = {
+  sftp: SFTPWrapper
+  connectInfo: ConnectInfo
+  remoteBackupPath: string
+  zipPath: string
 }

@@ -52,6 +52,12 @@ export interface DeployOpts {
   remoteUnzipDir: string
 
   /**
+   * 远程服务器备份目录，用于备份当前压缩包。
+   * 不设置则不备份
+   */
+  remoteBackupPath?: string
+
+  /**
    * 远程服务器的命令行执行路径
    * @default '/'
    * @example '/home/nginx/html'

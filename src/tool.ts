@@ -34,12 +34,28 @@ export function splitDeployOpts(deployOpts: DeployOpts) {
   const res: DeployOpts[] = []
 
   for (let i = 0; i < deployOpts.connectInfos.length; i++) {
-     const connectInfo = deployOpts.connectInfos[i]
-     res.push({
-        ...deployOpts,
-        connectInfos: [connectInfo],
-     })
+    const connectInfo = deployOpts.connectInfos[i]
+    res.push({
+      ...deployOpts,
+      connectInfos: [connectInfo],
+    })
   }
 
   return res
+}
+
+/**
+ * 把路径转成类似 unix 风格的路径
+ */
+export function toUnixPath(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
+export function getLocalToday() {
+  const d = new Date()
+    .toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
+    .replace(/\//g, '-')
+  const t = new Date().toLocaleTimeString('zh-CN', { timeZone: 'Asia/Shanghai' })
+
+  return `${d} ${t}`
 }
