@@ -38,6 +38,7 @@ function attemptUploadToServer(
     zipPath,
     remoteZipPath,
     remoteBackupPath,
+    maxBackupCount,
     onServerReady,
   }: AttemptUploadToServerOpts
 ): Promise<Client> {
@@ -75,7 +76,8 @@ function attemptUploadToServer(
                   sftp,
                   connectInfo,
                   zipPath,
-                  remoteBackupPath
+                  remoteBackupPath,
+                  maxBackupCount
                 })
               }
 
@@ -113,6 +115,7 @@ async function backup(
     connectInfo,
     remoteBackupPath,
     zipPath,
+    maxBackupCount
   }: BackupOpts
 ) {
   const backupFileName = `${getLocalToday()}.tar.gz`
@@ -126,15 +129,52 @@ async function backup(
         if (statErr) {
           console.log(`---${connectInfo.name ?? ''}: 准备上传备份文件到 ${remoteBackupFileFullName}---`)
 
-          sftp.fastPut(zipPath, remoteBackupFileFullName, {}, (backupUploadErr) => {
+          sftp.fastPut(zipPath, remoteBackupFileFullName, {}, async (backupUploadErr) => {
             if (backupUploadErr) {
               console.error(`---${connectInfo.name ?? ''}: 备份压缩包上传失败 (${remoteBackupFileFullName})---`, backupUploadErr)
-              reject(backupUploadErr)
+              return reject(backupUploadErr)
             }
-            else {
-              console.log(`---${connectInfo.name ?? ''}: 备份压缩包上传成功 (${remoteBackupFileFullName})---`)
-              resolve()
+            console.log(`---${connectInfo.name ?? ''}: 备份压缩包上传成功 (${remoteBackupFileFullName})---`)
+
+            // 清理旧的备份
+            if (maxBackupCount && maxBackupCount > 0) {
+              try {
+                const files = await new Promise<any[]>((res, rej) => {
+                  sftp.readdir(remoteBackupPath, (err, list) => {
+                    if (err) return rej(err)
+                    res(list)
+                  })
+                })
+
+                const backupFiles = files
+                  .filter(file => file.filename.endsWith('.tar.gz'))
+                  .sort((a, b) => a.attrs.mtime - b.attrs.mtime) // 按修改时间升序排序，旧的在前
+
+                if (backupFiles.length > maxBackupCount) {
+                  const filesToDelete = backupFiles.slice(0, backupFiles.length - maxBackupCount)
+                  for (const fileToDelete of filesToDelete) {
+                    const filePathToDelete = toUnixPath(join(remoteBackupPath, fileToDelete.filename))
+                    await new Promise<void>((resDel, rejDel) => {
+                      sftp.unlink(filePathToDelete, (delErr) => {
+                        if (delErr) {
+                          console.error(`---${connectInfo.name ?? ''}: 删除旧备份文件 ${filePathToDelete} 失败---`, delErr)
+                          // 不阻塞后续操作，只记录错误
+                        }
+                        else {
+                          console.log(`---${connectInfo.name ?? ''}: 已删除旧备份文件 ${filePathToDelete}---`)
+                        }
+                        resDel()
+                      })
+                    })
+                  }
+                }
+              }
+              catch (cleanupErr) {
+                console.error(`---${connectInfo.name ?? ''}: 清理旧备份时出错---`, cleanupErr)
+                // 清理失败不应阻塞主流程
+              }
             }
+            resolve()
           })
         }
         else {
@@ -155,6 +195,7 @@ type AttemptUploadToServerOpts = {
   zipPath: string
   remoteZipPath: string
   remoteBackupPath?: string
+  maxBackupCount?: number
   onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>
 }
 
@@ -163,4 +204,5 @@ type BackupOpts = {
   connectInfo: ConnectInfo
   remoteBackupPath: string
   zipPath: string
+  maxBackupCount?: number
 }

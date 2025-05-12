@@ -107,6 +107,19 @@ export interface DeployOpts {
   remoteCwd?: string
 
   /**
+   * 远程服务器备份目录，用于备份当前压缩包。
+   * 不设置则不备份
+   */
+  remoteBackupPath?: string
+
+  /**
+   * 最大备份数量
+   * 如果配置了 remoteBackupPath，并且备份目录中的压缩包数量超过了此值，则会删除最早的备份
+   * @default 5
+   */
+  maxBackupCount?: number
+
+  /**
    * 服务器准备完毕的回调，调用次数和 connectInfos 长度相同
    */
   onServerReady?: (server: Client, connectInfo: ConnectInfo) => Promise<void>

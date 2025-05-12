@@ -9,6 +9,7 @@ export function getOpts(opts: DeployOpts): Required<
     | 'customUpload'
     | 'customDeploy'
     | 'remoteBackupPath'
+    | 'maxBackupCount'
   >
 > {
   const remoteCwd = opts.remoteCwd ?? '/'
@@ -34,6 +35,7 @@ export function getOpts(opts: DeployOpts): Required<
     buildCmd: 'npm run build',
     needRemoveZip: true,
     uploadRetryCount: 3,
+    maxBackupCount: 5,
     ...opts,
   }
 }

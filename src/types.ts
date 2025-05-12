@@ -58,6 +58,13 @@ export interface DeployOpts {
   remoteBackupPath?: string
 
   /**
+   * 最大备份数量
+   * 如果配置了 remoteBackupPath，并且备份目录中的压缩包数量超过了此值，则会删除最早的备份
+   * @default 5
+   */
+  maxBackupCount?: number
+
+  /**
    * 远程服务器的命令行执行路径
    * @default '/'
    * @example '/home/nginx/html'
