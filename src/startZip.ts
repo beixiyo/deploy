@@ -65,7 +65,9 @@ export async function startZip(
 
     // 监听流的打包
     output.on('close', () => {
-      console.log(`---目标打包完成: ${zipPath} (大小: ${archive.pointer()} bytes)---`)
+      const sizeInBytes = archive.pointer()
+      const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2)
+      console.log(`---目标打包完成: ${zipPath} (大小: ${sizeInMB} MB)---`)
       resolve(true)
     })
   })
