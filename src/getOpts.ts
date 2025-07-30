@@ -29,6 +29,7 @@ export function getOpts(opts: DeployOpts): PartRequiredDeployOpts {
     maxBackupCount: 5,
     skipBuild: false,
     interactive: false,
+    concurrent: true,
     ...opts,
   }
 }

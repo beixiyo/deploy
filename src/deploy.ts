@@ -6,7 +6,6 @@ import { connectAndUpload } from './connectAndUpload'
 import { unzipAndDeploy } from './unzipAndDeploy'
 import { rmSync, existsSync } from 'node:fs'
 import { getOpts } from './getOpts'
-import { splitDeployOpts } from './tool'
 import { logger } from './logger'
 import { dirname } from 'node:path'
 import { InteractiveDeployer, showInteractiveModeInfo, showAutoModeInfo } from './interactive'
@@ -111,34 +110,84 @@ export async function deploy(deployOpts: DeployOpts) {
       }
     }
 
-    const singleConnectInfo = splitDeployOpts(opts)
-    logger.info(`准备部署到 ${singleConnectInfo.length} 个服务器`)
+    logger.info(`准备部署到 ${opts.connectInfos.length} 个服务器`)
+    logger.info(`部署模式: ${opts.concurrent ? '并发模式' : '串行模式'}`)
 
     // 记录部署结果
     let successCount = 0
     let failCount = 0
 
-    for (const item of singleConnectInfo) {
+    if (opts.concurrent) {
+      // 并发模式：同时部署所有服务器
+      await deployConcurrent()
+    }
+    else {
+      // 串行模式：逐个部署服务器
+      await deploySequential()
+    }
+
+    async function deployConcurrent() {
       try {
+        // 自定义上传或使用默认上传
         const currentSShServers = deployOpts.customUpload
           ? await deployOpts.customUpload(() => new Client(), opts.connectInfos)
-          : await connectAndUpload(item)
+          : await connectAndUpload(opts)
 
         sshServers.push(...currentSShServers)
 
         if (currentSShServers.length > 0) {
+          // 自定义部署或使用默认部署
           deployOpts.customDeploy
-            ? await deployOpts.customDeploy(currentSShServers, item.connectInfos)
-            : await unzipAndDeploy(currentSShServers, item.deployCmd)
+            ? await deployOpts.customDeploy(currentSShServers, opts.connectInfos)
+            : await unzipAndDeploy(currentSShServers, opts.deployCmd)
 
-          successCount++
-          logger.success(`服务器 ${item.connectInfos[0].name || item.connectInfos[0].host} 部署成功`)
+          successCount = opts.connectInfos.length
+          logger.success('所有服务器部署成功')
         }
       }
       catch (error) {
-        failCount++
-        logger.error(`服务器 ${item.connectInfos[0].name || item.connectInfos[0].host} 部署失败`, error)
-        // 继续处理其他服务器，不中断流程
+        failCount = opts.connectInfos.length
+        logger.error('并发部署失败', error)
+      }
+    }
+
+    async function deploySequential() {
+      // 串行模式：为每个服务器单独处理
+      for (let i = 0; i < opts.connectInfos.length; i++) {
+        const connectInfo = opts.connectInfos[i]
+        const serverName = connectInfo.name || connectInfo.host
+
+        try {
+          logger.info(`开始部署服务器 ${i + 1}/${opts.connectInfos.length}: ${serverName}`)
+
+          // 创建单个服务器的配置
+          const singleServerOpts = {
+            ...opts,
+            connectInfos: [connectInfo]
+          }
+
+          // 自定义上传或使用默认上传
+          const currentSShServers = deployOpts.customUpload
+            ? await deployOpts.customUpload(() => new Client(), [connectInfo])
+            : await connectAndUpload(singleServerOpts)
+
+          sshServers.push(...currentSShServers)
+
+          if (currentSShServers.length > 0) {
+            // 自定义部署或使用默认部署
+            deployOpts.customDeploy
+              ? await deployOpts.customDeploy(currentSShServers, [connectInfo])
+              : await unzipAndDeploy(currentSShServers, opts.deployCmd)
+
+            successCount++
+            logger.success(`服务器 ${serverName} 部署成功`)
+          }
+        }
+        catch (error) {
+          failCount++
+          logger.error(`服务器 ${serverName} 部署失败`, error)
+          // 继续处理其他服务器，不中断流程
+        }
       }
     }
 
@@ -168,7 +217,7 @@ export async function deploy(deployOpts: DeployOpts) {
 
     logger.title('部署完成')
       logger.table({
-        '部署总数': singleConnectInfo.length.toString(),
+        '部署总数': opts.connectInfos.length.toString(),
         '成功数量': successCount.toString(),
         '失败数量': failCount.toString(),
         '总耗时': `${duration} 秒`,

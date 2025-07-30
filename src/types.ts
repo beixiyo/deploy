@@ -42,6 +42,14 @@ export interface DeployOpts {
   interactive?: boolean
 
   /**
+   * ## 是否并发部署到多个服务器
+   * - 启用后将同时部署到所有服务器，提高速度但可能导致日志混乱
+   * - 禁用后将逐个部署，日志清晰但速度较慢
+   * @default true
+   */
+  concurrent?: boolean
+
+  /**
    * 执行打包命令后的打包文件夹路径
    * @example path.resolve(__dirname, '../dist')
    */
@@ -122,7 +130,8 @@ export type PartRequiredDeployOpts = PartRequired<
   'uploadRetryCount' |
   'maxBackupCount' |
   'skipBuild' |
-  'interactive'
+  'interactive' |
+  'concurrent'
 >
 
 export type ConnectInfo = (PartRequired<ConnectConfig, 'host'> & { name?: string })

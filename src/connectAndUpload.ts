@@ -139,6 +139,7 @@ function attemptUploadToServer(
                   }
 
                   logger.serverLog(serverName, '文件上传成功', LogLevel.SUCCESS)
+                  logger.newLine()
                   resolve(sshServer)
                 })
             }

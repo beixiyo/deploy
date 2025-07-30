@@ -57,12 +57,13 @@ const config = {
     zipPath: resolve(__dirname, '../dist.tar.gz'),
     remoteZipPath: getEnv('REMOTE_ZIP_PATH', '/home/test-deploy/dist.tar.gz'),
     remoteUnzipDir: getEnv('REMOTE_UNZIP_DIR', '/home/test-deploy/project'),
-    interactive: true,
 
     // ======================
     // * 可选配置
     // ======================
-    skipBuild: getEnv('SKIP_BUILD', 'false') === 'true',
+    concurrent: true,
+    interactive: false,
+    skipBuild: getEnv('SKIP_BUILD', 'true') === 'true',
     remoteCwd: getEnv('REMOTE_CWD', '/'),
     remoteBackupDir: getEnv('REMOTE_BACKUP_DIR', '/home/test-deploy/project-backup'),
     maxBackupCount: Number(getEnv('MAX_BACKUP_COUNT', '3')),
