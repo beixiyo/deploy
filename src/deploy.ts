@@ -9,6 +9,7 @@ import { getOpts } from './getOpts'
 import { splitDeployOpts } from './tool'
 import { logger } from './logger'
 import { dirname } from 'node:path'
+import { InteractiveDeployer, showInteractiveModeInfo, showAutoModeInfo } from './interactive'
 
 
 export async function deploy(deployOpts: DeployOpts) {
@@ -17,6 +18,14 @@ export async function deploy(deployOpts: DeployOpts) {
   const opts = getOpts(deployOpts)
 
   logger.title('开始部署流程')
+
+  // 显示模式提示信息
+  if (opts.interactive) {
+    showInteractiveModeInfo()
+  }
+  else {
+    showAutoModeInfo()
+  }
 
   // 验证必要配置
   try {
@@ -28,7 +37,6 @@ export async function deploy(deployOpts: DeployOpts) {
     ) {
       throw new Error('distDir, zipPath, remoteZipPath, remoteUnzipDir 必须配置')
     }
-
 
     // 检查 remoteUnzipDir 不能与 remoteZipPath 目录相同
     const remoteZipDir = dirname(opts.remoteZipPath)
@@ -46,13 +54,27 @@ export async function deploy(deployOpts: DeployOpts) {
     '部署目标': opts.connectInfos.map(info => info.name || info.host).join(', '),
     '构建命令': opts.buildCmd,
     '跳过构建': opts.skipBuild ? '是' : '否',
+    '交互模式': opts.interactive ? '是' : '否',
     '本地构建目录': opts.distDir,
     '远程部署路径': opts.remoteUnzipDir,
   })
 
+  // 创建交互处理器
+  const interactiveDeployer = opts.interactive
+    ? new InteractiveDeployer(opts)
+    : null
+
   try {
     // 构建阶段
     logger.stage('构建阶段')
+
+    if (interactiveDeployer) {
+      const shouldContinue = await interactiveDeployer.confirmBuildStage()
+      if (!shouldContinue) {
+        interactiveDeployer.handleUserCancel('构建')
+        return
+      }
+    }
 
     if (opts.skipBuild) {
       logger.info('跳过构建步骤')
@@ -67,10 +89,27 @@ export async function deploy(deployOpts: DeployOpts) {
 
     // 压缩阶段
     logger.stage('压缩阶段')
+
+    if (interactiveDeployer) {
+      const shouldContinue = await interactiveDeployer.confirmCompressStage()
+      if (!shouldContinue) {
+        interactiveDeployer.handleUserCancel('压缩')
+        return
+      }
+    }
+
     await startZip(opts)
 
     // 上传和部署阶段
     logger.stage('上传和部署阶段')
+
+    if (interactiveDeployer) {
+      const shouldContinue = await interactiveDeployer.confirmUploadAndDeployStage()
+      if (!shouldContinue) {
+        interactiveDeployer.handleUserCancel('上传和部署')
+        return
+      }
+    }
 
     const singleConnectInfo = splitDeployOpts(opts)
     logger.info(`准备部署到 ${singleConnectInfo.length} 个服务器`)
@@ -106,9 +145,21 @@ export async function deploy(deployOpts: DeployOpts) {
     // 清理阶段
     logger.stage('清理阶段')
 
-    if (opts.needRemoveZip) {
-      logger.info(`清理本地临时文件: ${opts.zipPath}`)
-      rmSync(opts.zipPath)
+    if (interactiveDeployer) {
+      const shouldContinue = await interactiveDeployer.confirmCleanupStage()
+      if (!shouldContinue) {
+        logger.info('用户跳过了清理阶段')
+      }
+      else if (opts.needRemoveZip) {
+        logger.info(`清理本地临时文件: ${opts.zipPath}`)
+        rmSync(opts.zipPath)
+      }
+    }
+    else {
+      if (opts.needRemoveZip) {
+        logger.info(`清理本地临时文件: ${opts.zipPath}`)
+        rmSync(opts.zipPath)
+      }
     }
 
     // 部署完成，显示统计信息
@@ -116,19 +167,19 @@ export async function deploy(deployOpts: DeployOpts) {
     const duration = ((endTime - startTime) / 1000).toFixed(2)
 
     logger.title('部署完成')
-    logger.table({
-      '部署总数': singleConnectInfo.length.toString(),
-      '成功数量': successCount.toString(),
-      '失败数量': failCount.toString(),
-      '总耗时': `${duration} 秒`,
-    })
+      logger.table({
+        '部署总数': singleConnectInfo.length.toString(),
+        '成功数量': successCount.toString(),
+        '失败数量': failCount.toString(),
+        '总耗时': `${duration} 秒`,
+      })
 
-    if (failCount > 0) {
-      logger.warning('部分服务器部署失败，请检查日志')
-    }
-    else {
-      logger.success('所有服务器部署成功')
-    }
+      if (failCount > 0) {
+        logger.warning('部分服务器部署失败，请检查日志')
+      }
+      else {
+        logger.success('所有服务器部署成功')
+      }
   }
   catch (error: any) {
     logger.error('部署过程中发生错误', error)
@@ -145,6 +196,5 @@ export async function deploy(deployOpts: DeployOpts) {
         logger.error('关闭 SSH 连接时发生错误', err)
       }
     })
-
   }
 }

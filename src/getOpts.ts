@@ -28,6 +28,7 @@ export function getOpts(opts: DeployOpts): PartRequiredDeployOpts {
     uploadRetryCount: 3,
     maxBackupCount: 5,
     skipBuild: false,
+    interactive: false,
     ...opts,
   }
 }

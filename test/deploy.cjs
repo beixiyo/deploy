@@ -57,6 +57,8 @@ const config = {
     zipPath: resolve(__dirname, '../dist.tar.gz'),
     remoteZipPath: getEnv('REMOTE_ZIP_PATH', '/home/test-deploy/dist.tar.gz'),
     remoteUnzipDir: getEnv('REMOTE_UNZIP_DIR', '/home/test-deploy/project'),
+    interactive: true,
+
     // ======================
     // * 可选配置
     // ======================

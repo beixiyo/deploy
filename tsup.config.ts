@@ -5,5 +5,8 @@ export default defineConfig({
   format: ['esm', 'cjs'],
   dts: true,
   clean: true,
-  platform: 'node'
+  platform: 'node',
+  bundle: true,
+  minify: true,
+  noExternal: ['inquirer']
 })

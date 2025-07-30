@@ -108,8 +108,8 @@ function attemptUploadToServer(
                 zipPath, remoteZipPath,
                 {
                   step: (total: number, nb: number, fsize: number) => {
-                    // 计算百分比进度
-                    const percent = Math.floor((nb / total) * 100)
+                    // 计算百分比进度 - 使用已传输字节数除以文件总大小
+                    const percent = Math.floor((nb / fsize) * 100)
 
                     // 每当百分比变化 5% 以上时才更新，减少日志输出频率
                     if (percent >= lastPercent + 5 || percent === 100) {

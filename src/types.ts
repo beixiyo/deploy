@@ -14,8 +14,8 @@ export interface DeployOpts {
    */
   buildCmd?: string
   /**
-   * 远程服务器部署命令
-   * ### 注意：传递此参数，末尾必须有回车，否则无法执行。此问题在于 ssh2
+   * 远程服务器部署命令，和 customDeploy 回调冲突
+   * ### 注意：传递此参数，末尾必须有回车，否则无法执行。此 bug 问题在于 ssh2
    * @default
    * `
    *   cd ${remoteCwd} &&
@@ -33,6 +33,13 @@ export interface DeployOpts {
    * @default false
    */
   skipBuild?: boolean
+
+  /**
+   * 是否启用交互式部署模式
+   * 启用后将在每个部署阶段询问用户是否继续执行
+   * @default false
+   */
+  interactive?: boolean
 
   /**
    * 执行打包命令后的打包文件夹路径
@@ -97,7 +104,6 @@ export interface DeployOpts {
   /**
    * 自定义上传行为，如果传递了该函数，则会覆盖默认上传行为
    * @param createServer 一个函数，用于创建 ssh2.Client 对象
-   * @param connectInfos 连接信息
    * @returns 返回一个数组，数组中的元素是 ssh2.Client 对象
    */
   customUpload?: (createServer: () => Client, connectInfos: ConnectInfo[]) => Promise<Client[]>
@@ -115,7 +121,8 @@ export type PartRequiredDeployOpts = PartRequired<
   'needRemoveZip' |
   'uploadRetryCount' |
   'maxBackupCount' |
-  'skipBuild'
+  'skipBuild' |
+  'interactive'
 >
 
 export type ConnectInfo = (PartRequired<ConnectConfig, 'host'> & { name?: string })
