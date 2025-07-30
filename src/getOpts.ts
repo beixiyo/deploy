@@ -1,17 +1,8 @@
 import { toUnixPath } from './tool'
-import type { DeployOpts } from './types'
+import type { DeployOpts, PartRequiredDeployOpts } from './types'
 
 
-export function getOpts(opts: DeployOpts): Required<
-  Omit<
-    DeployOpts,
-    | 'onServerReady'
-    | 'customUpload'
-    | 'customDeploy'
-    | 'remoteBackupDir'
-    | 'maxBackupCount'
-  >
-> {
+export function getOpts(opts: DeployOpts): PartRequiredDeployOpts {
   const remoteCwd = opts.remoteCwd ?? '/'
   /**
    * - 进入服务器暂存地址
@@ -36,6 +27,7 @@ export function getOpts(opts: DeployOpts): Required<
     needRemoveZip: true,
     uploadRetryCount: 3,
     maxBackupCount: 5,
+    skipBuild: false,
     ...opts,
   }
 }

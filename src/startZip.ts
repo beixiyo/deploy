@@ -2,6 +2,7 @@ import archiver from 'archiver'
 import { createWriteStream, existsSync, lstatSync, mkdirSync } from 'fs'
 import { dirname } from 'path'
 import type { DeployOpts } from './types'
+import { logger, LogLevel } from './logger'
 
 
 /**
@@ -14,7 +15,7 @@ export async function startZip(
   }: Pick<DeployOpts, 'zipPath' | 'distDir'>
 ) {
   return new Promise((resolve, reject) => {
-    console.log('---开始压缩---')
+    logger.info('开始压缩文件')
 
     // 1. 校验 distDir 是否存在且为目录
     if (!existsSync(distDir)) {
@@ -29,7 +30,7 @@ export async function startZip(
     if (!existsSync(zipDir)) {
       try {
         mkdirSync(zipDir, { recursive: true })
-        console.log(`---创建压缩包目录 ${zipDir} 成功---`)
+        logger.success(`创建压缩包目录 ${zipDir} 成功`)
       }
       catch (mkdirErr) {
         return reject(new Error(`创建压缩包目录 ${zipDir} 失败: ${mkdirErr}`))
@@ -46,14 +47,25 @@ export async function startZip(
         gzip: true,
         gzipOptions: { level: 9 }
       }
-    ).on('error', err => {
-      console.error('---压缩过程中发生错误---', err)
-      reject(err)
-    })
+    )
+      .on('error', err => {
+        logger.error('压缩过程中发生错误', err)
+        reject(err)
+      })
+      .on('progress', (progress) => {
+        // 显示压缩进度
+        if (progress.fs.totalBytes > 0) {
+          logger.progress(
+            '压缩进度:',
+            progress.fs.processedBytes,
+            progress.fs.totalBytes
+          )
+        }
+      })
 
     const output = createWriteStream(zipPath)
     output.on('error', (err) => {
-      console.error('---写入压缩文件时发生错误---', err)
+      logger.error('写入压缩文件时发生错误', err)
       reject(err)
     })
 
@@ -67,7 +79,7 @@ export async function startZip(
     output.on('close', () => {
       const sizeInBytes = archive.pointer()
       const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2)
-      console.log(`---目标打包完成: ${zipPath} (大小: ${sizeInMB} MB)---`)
+      logger.success(`目标打包完成: ${zipPath} (大小: ${sizeInMB} MB)`)
       resolve(true)
     })
   })

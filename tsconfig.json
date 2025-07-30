@@ -1,22 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "emitDeclarationOnly": false,
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
-    "lib": ["ESNext", "DOM"],
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-    },
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": "./",
+    "outDir": "dist",
     "declaration": true,
-    "declarationDir": "./dist/typings",
     "skipLibCheck": true,
-    "strict": false,
-    "esModuleInterop": true
+    "strict": true
   },
   "include": [
-    "src/**/*.ts"
+    "src"
   ]
 }

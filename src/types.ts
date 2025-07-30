@@ -1,4 +1,5 @@
 import type { Client, ConnectConfig } from 'ssh2'
+import type { PartRequired } from '@jl-org/ts-tool'
 
 
 export interface DeployOpts {
@@ -26,6 +27,12 @@ export interface DeployOpts {
    * `
    */
   deployCmd?: string
+
+  /**
+   * 是否跳过构建步骤
+   * @default false
+   */
+  skipBuild?: boolean
 
   /**
    * 执行打包命令后的打包文件夹路径
@@ -98,5 +105,16 @@ export interface DeployOpts {
    */
   customDeploy?: (servers: Client[], connectInfos: ConnectInfo[]) => Promise<void>
 }
+
+export type PartRequiredDeployOpts = PartRequired<
+  DeployOpts,
+  'deployCmd' |
+  'remoteCwd' |
+  'buildCmd' |
+  'needRemoveZip' |
+  'uploadRetryCount' |
+  'maxBackupCount' |
+  'skipBuild'
+>
 
 export type ConnectInfo = (ConnectConfig & { name?: string })

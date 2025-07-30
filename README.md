@@ -10,12 +10,6 @@ npm i @jl-org/deploy -D
 
 ## 快速上手
 
-```bash
-touch scripts/deploy.cjs
-
-node scripts/deploy.cjs
-```
-
 `scripts/deploy.cjs`
 ```js
 // @ts-check
@@ -98,6 +92,12 @@ export interface DeployOpts {
    * `
    */
   deployCmd?: string
+
+  /**
+   * 是否跳过构建步骤
+   * @default false
+   */
+  skipBuild?: boolean
 
   /**
    * 远程服务器的命令行执行路径
@@ -200,3 +200,42 @@ deploy({
   ],
 })
 ```
+
+
+## 配置选项
+
+| 选项 | 类型 | 默认值 | 描述 |
+| --- | --- | --- | --- |
+| `connectInfos` | `ConnectInfo[]` | - | **必填**，SSH 连接信息数组 |
+| `buildCmd` | `string` | `'npm run build'` | 构建命令 |
+| `skipBuild` | `boolean` | `false` | 是否跳过构建步骤 |
+| `deployCmd` | `string` | *见下方* | 远程服务器部署命令 |
+| `distDir` | `string` | - | **必填**，构建产物目录路径 |
+| `zipPath` | `string` | - | **必填**，压缩文件路径 |
+| `remoteZipPath` | `string` | - | **必填**，远程压缩文件路径 |
+| `remoteUnzipDir` | `string` | - | **必填**，远程解压目录路径 |
+| `remoteBackupDir` | `string` | - | 远程备份目录路径 |
+| `maxBackupCount` | `number` | `5` | 最大备份数量 |
+| `remoteCwd` | `string` | `'/'` | 远程命令执行路径 |
+| `needRemoveZip` | `boolean` | `true` | 是否删除本地压缩文件 |
+| `uploadRetryCount` | `number` | `3` | 上传失败重试次数 |
+| `onServerReady` | `function` | - | 服务器准备完毕回调 |
+| `customUpload` | `function` | - | 自定义上传行为 |
+| `customDeploy` | `function` | - | 自定义部署行为 |
+
+**默认部署命令:**
+
+```bash
+cd ${remoteCwd} &&
+rm -rf ${remoteUnzipDir} &&
+mkdir -p ${remoteUnzipDir} &&
+tar -xzf ${remoteZipPath} -C ${remoteUnzipDir} &&
+rm -rf ${remoteZipPath} &&
+exit
+```
+
+## 注意事项
+
+1. `remoteUnzipDir` 不应与 `remoteZipPath` 的目录相同，因为部署过程中会先删除 `remoteUnzipDir` 目录
+2. 使用自定义 `deployCmd` 时，命令末尾必须有换行符
+3. `skipBuild` 为 true 时，会检查构建产物目录是否存在，不存在则报错

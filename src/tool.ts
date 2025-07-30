@@ -1,12 +1,12 @@
 import type { Client, SFTPWrapper, Stats } from 'ssh2'
-import type { DeployOpts } from './types'
+import type { DeployOpts, PartRequiredDeployOpts } from './types'
 
 /**
  * 失败后自动重试请求
  * @param task 任务函数，返回一个 Promise
  * @param maxCount 剩余重试次数，默认 3
  */
-export function retryTask<T>(
+export async function retryTask<T>(
   task: () => Promise<T>,
   maxCount = 3
 ): Promise<T> {
@@ -31,8 +31,8 @@ export function retryTask<T>(
  * - 把配置信息的 connectInfos 拆分成多个配置信息
  * - 每个配置信息只有一个 connectInfo
  */
-export function splitDeployOpts(deployOpts: DeployOpts) {
-  const res: DeployOpts[] = []
+export function splitDeployOpts(deployOpts: PartRequiredDeployOpts): PartRequiredDeployOpts[] {
+  const res: PartRequiredDeployOpts[] = []
 
   for (let i = 0; i < deployOpts.connectInfos.length; i++) {
     const connectInfo = deployOpts.connectInfos[i]
