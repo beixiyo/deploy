@@ -1,9 +1,9 @@
 import { Client } from 'ssh2'
-import type { ConnectInfo, PartRequiredDeployOpts } from './types'
+import { LogLevel, type ConnectInfo, type PartRequiredDeployOpts } from './types'
 import { ensureRemoteDirExists, retryTask, updateProgress } from './tool'
 import { dirname } from 'node:path'
 import { backup } from './backup'
-import { logger, LogLevel } from './logger'
+import { logger } from './logger'
 
 
 /**

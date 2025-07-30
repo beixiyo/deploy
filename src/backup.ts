@@ -1,8 +1,8 @@
 import { Client, type SFTPWrapper } from 'ssh2'
-import type { ConnectInfo } from './types'
+import { LogLevel, type ConnectInfo } from './types'
 import { ensureRemoteDirExists, getLocalToday, toUnixPath, updateProgress } from './tool'
 import { join } from 'node:path'
-import { logger, LogLevel } from './logger'
+import { logger } from './logger'
 
 
 export async function backup(

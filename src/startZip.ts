@@ -41,9 +41,6 @@ export async function startZip(
       return reject(new Error(`路径 ${zipDir} 已存在但不是一个目录`))
     }
 
-    // 定义打包格式和相关配置
-    let lastProgressPercent = -1  // 记录上次显示的百分比，用于防抖
-
     const archive = archiver(
       'tar',
       {

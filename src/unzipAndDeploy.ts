@@ -1,5 +1,6 @@
 import { Client } from 'ssh2'
-import { logger, LogLevel } from './logger'
+import { logger } from './logger'
+import { LogLevel } from './types'
 
 
 /**
