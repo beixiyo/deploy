@@ -69,34 +69,30 @@ const config = {
 
     // ======================
     // * 测试自定义部署命令
-    // ======================
     // 如果需要使用自定义部署命令，取消下面的注释
-    // deployCmd: `cd ${getEnv('REMOTE_CWD', '/')} &&
-    // rm -rf ${getEnv('REMOTE_UNZIP_DIR', '/home/test-deploy')} &&
-    // mkdir -p ${getEnv('REMOTE_UNZIP_DIR', '/home/test-deploy')} &&
-    // tar -xzf ${getEnv('REMOTE_ZIP_PATH', '/home/test-deploy/dist.tar.gz')} -C ${getEnv('REMOTE_UNZIP_DIR', '/home/test-deploy')} &&
-    // rm -rf ${getEnv('REMOTE_ZIP_PATH', '/home/test-deploy/dist.tar.gz')} &&
-    // exit
+    // ======================
+    // deployCmd: `echo "自定义部署命令" > /home/test-deploy/deployCmd.txt && exit
     // `,
 
     // ======================
     // * 测试服务器就绪回调
     // ======================
-    async onServerReady(server, connectInfo) {
-      console.log(`服务器 ${connectInfo.name} 已就绪，执行前置操作`)
-      // 这里可以执行一些服务器连接成功后的操作
-    },
+    // async onServerReady(server, connectInfo) {
+    //   console.log(`==================== 服务器 ${connectInfo.name} 已就绪，执行前置操作`)
+    //   // 这里可以执行一些服务器连接成功后的操作
+    // },
 
     // ======================
     // * 测试自定义上传逻辑
-    // ======================
     // 如果需要使用自定义上传，取消下面的注释
-    // async customUpload(createServer) {
-    //   console.log('开始执行自定义上传')
+    // ======================
+    // async customUpload(createServer, connectInfos) {
+    //   console.log('==================== 开始执行自定义上传')
     //   const server = createServer()
+
     //   return new Promise((resolve) => {
     //     server.on('ready', () => {
-    //       console.log('自定义连接成功')
+    //       console.log('==================== 自定义连接成功')
     //       // 执行自定义上传逻辑
     //       resolve([server])
     //     })
@@ -106,12 +102,14 @@ const config = {
 
     // ======================
     // * 测试自定义部署逻辑
-    // ======================
     // 如果需要使用自定义部署，取消下面的注释
+    // ======================
     // async customDeploy(servers, serverInfos) {
-    //   console.log('开始执行自定义部署')
+    //   console.log('==================== 开始执行自定义部署')
+
     //   return new Promise((resolve) => {
-    //     servers[0].exec('echo "自定义部署完成" > /tmp/deploy_success.txt', () => {
+    //     console.log(`主机地址: ${serverInfos[0].host}`)
+    //     servers[0].exec('echo "自定义部署完成" > /home/test-deploy/customDeploy.txt', () => {
     //       console.log('自定义部署完成')
     //       resolve()
     //     })

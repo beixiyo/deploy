@@ -1,16 +1,19 @@
-import { Client } from 'ssh2';
-import type { DeployOpts, ConnectInfo } from './types'
-import { ensureRemoteDirExists, retryTask } from './tool';
-import { dirname } from 'node:path';
+import { Client } from 'ssh2'
+import type { ConnectInfo, PartRequiredDeployOpts } from './types'
+import { ensureRemoteDirExists, retryTask } from './tool'
+import { dirname } from 'node:path'
 import { backup } from './backup'
+import { logger, LogLevel } from './logger'
 
 
 /**
  * 将 zip 文件传输至远程服务器
  */
 export async function connectAndUpload(
-  opts: DeployOpts
+  opts: PartRequiredDeployOpts
 ): Promise<Client[]> {
+  logger.info('开始连接服务器并上传文件')
+
   // 为每个服务器创建带重试的任务
   const uploadTasks = opts.connectInfos.map((connectInfo) =>
     retryTask(
@@ -22,9 +25,36 @@ export async function connectAndUpload(
     )
   )
 
-  // 等待所有上传任务完成（包括重试）
-  // Promise.all 会在任何一个任务最终失败时立即 reject
-  const successfulServers = await Promise.all(uploadTasks)
+  logger.info(`准备连接 ${opts.connectInfos.length} 台服务器`)
+  const results = await Promise.allSettled(uploadTasks)
+
+  // 处理结果
+  const successfulServers: Client[] = []
+  let failCount = 0
+
+  results.forEach((result, index) => {
+    const serverName = opts.connectInfos[index].name || opts.connectInfos[index].host
+
+    if (result.status === 'fulfilled') {
+      successfulServers.push(result.value)
+      logger.serverLog(serverName, '连接和上传成功', LogLevel.SUCCESS)
+    }
+    else {
+      failCount++
+      logger.serverLog(serverName, `连接或上传失败: ${result.reason}`, LogLevel.ERROR)
+    }
+  })
+
+  // 显示总结
+  if (successfulServers.length === 0) {
+    throw new Error('所有服务器连接或上传均失败，无法继续部署')
+  }
+  else if (failCount > 0) {
+    logger.warning(`共 ${opts.connectInfos.length} 台服务器，${successfulServers.length} 台连接和上传成功，${failCount} 台失败`)
+  }
+  else {
+    logger.success(`所有 ${opts.connectInfos.length} 台服务器连接和上传成功`)
+  }
 
   // 返回所有成功连接并上传的 sshServer 实例
   return successfulServers
@@ -45,59 +75,86 @@ function attemptUploadToServer(
 ): Promise<Client> {
   return new Promise<Client>((resolve, reject) => {
     const sshServer = new Client()
+    const serverName = connectInfo.name || connectInfo.host
+
+    const dispose = (err: any) => {
+      sshServer.end()
+      sshServer.destroy()
+      return reject(err)
+    }
 
     sshServer
       .on('ready', async () => {
         try {
           if (onServerReady) {
+            logger.serverLog(serverName, '服务器连接成功，执行就绪回调')
             await onServerReady(sshServer, connectInfo)
           }
-          console.log(`--连接服务器 ${connectInfo.name ?? ''}: ${connectInfo.host} 成功--`)
+          logger.serverLog(serverName, '开始上传文件')
 
           sshServer.sftp(async (err, sftp) => {
             if (err) {
-              console.error(`---${connectInfo.name ?? ''}: 压缩包上传失败 (SFTP 错误)---`)
-              // SFTP 失败时也需要销毁连接，避免资源泄露
-              sshServer.end()
-              sshServer.destroy()
-              return reject(err)
+              logger.serverLog(serverName, 'SFTP 初始化失败', LogLevel.ERROR)
+              return dispose(err)
             }
 
-            await ensureRemoteDirExists(sshServer, sftp, dirname(remoteZipPath))
-            sftp.fastPut(zipPath, remoteZipPath, {}, async (err) => {
-              if (err) {
-                console.error(`---${connectInfo.name ?? ''}: 压缩包上传失败 (fastPut 错误)---`)
-                // 上传失败时也需要销毁连接
-                sshServer.end()
-                sshServer.destroy()
-                return reject(err)
-              }
+            try {
+              await ensureRemoteDirExists(sshServer, sftp, dirname(remoteZipPath))
 
-              if (remoteBackupDir) {
-                await backup({
-                  sftp,
-                  connectInfo,
-                  zipPath,
-                  remoteBackupDir,
-                  maxBackupCount,
-                  sshServer
+              // 使用 step 选项添加进度显示
+              let lastPercent = -1
+
+              sftp.fastPut(
+                zipPath, remoteZipPath,
+                {
+                  step: (total: number, nb: number, fsize: number) => {
+                    // 计算百分比进度
+                    const percent = Math.floor((nb / total) * 100)
+
+                    // 每当百分比变化 5% 以上时才更新，减少日志输出频率
+                    if (percent >= lastPercent + 5 || percent === 100) {
+                      lastPercent = percent
+                      const transferredMB = (nb / (1024 * 1024)).toFixed(2)
+                      const totalMB = (fsize / (1024 * 1024)).toFixed(2)
+                      logger.serverLog(serverName, `上传进度: ${transferredMB}MB / ${totalMB}MB (${percent}%)`)
+                    }
+                  }
+                },
+                async (err) => {
+                  if (err) {
+                    logger.serverLog(serverName, '文件上传失败', LogLevel.ERROR)
+                    return dispose(err)
+                  }
+
+                  if (remoteBackupDir) {
+                    logger.serverLog(serverName, '开始备份文件')
+                    await backup({
+                      sftp,
+                      connectInfo,
+                      zipPath,
+                      remoteBackupDir,
+                      maxBackupCount,
+                      sshServer
+                    })
+                  }
+
+                  logger.serverLog(serverName, '文件上传成功', LogLevel.SUCCESS)
+                  resolve(sshServer)
                 })
-              }
-
-              console.log(`---${connectInfo.name ?? ''}: 压缩包上传成功---`)
-              resolve(sshServer)
-            })
+            }
+            catch (error) {
+              logger.serverLog(serverName, '上传过程中出错', LogLevel.ERROR)
+              return dispose(err)
+            }
           })
         }
         catch (readyError) { // 捕获 onServerReady 中的同步/异步错误
-          console.error(`---${connectInfo.name ?? ''}: onServerReady 回调执行失败---`, readyError)
-          sshServer.end()
-          sshServer.destroy()
-          reject(readyError)
+          logger.serverLog(serverName, 'onServerReady 回调执行失败', LogLevel.ERROR)
+          return dispose(readyError)
         }
       })
       .on('error', err => {
-        console.error(`---${connectInfo.name ?? ''}: 连接服务器失败---`, err.message)
+        logger.serverLog(serverName, `连接失败: ${err.message}`, LogLevel.ERROR)
         // 连接错误时，sshServer 可能未完全建立，尝试 end/destroy 可能再次触发错误，但仍需尝试清理
         try {
           sshServer.end()

@@ -131,6 +131,58 @@ export class Logger {
     process.stdout.write('\r\x1b[K') // 清除当前行
     process.stdout.write(message)
   }
+
+  /**
+   * 打印分隔线
+   */
+  divider() {
+    console.log(kleur.dim('─'.repeat(50)))
+  }
+
+  /**
+   * 打印空行
+   */
+  newLine() {
+    console.log('')
+  }
+
+  /**
+   * 打印标题
+   */
+  title(message: string) {
+    this.newLine()
+    console.log(kleur.bold().white().bgBlue(` ${message} `))
+    this.divider()
+  }
+
+  /**
+   * 打印普通文本（白色太单调，改用青色）
+   */
+  log(message: string) {
+    console.log(kleur.cyan(`${this.prefix}${message}`))
+  }
+
+  /**
+   * 打印表格形式的数据
+   */
+  table(data: Record<string, string>) {
+    const maxKeyLength = Math.max(...Object.keys(data).map(k => k.length))
+
+    this.newLine()
+    Object.entries(data).forEach(([key, value]) => {
+      const paddedKey = key.padEnd(maxKeyLength)
+      console.log(`${kleur.dim(this.prefix)}${kleur.bold().cyan(paddedKey)} ${kleur.dim('│')} ${value}`)
+    })
+    this.newLine()
+  }
+
+  /**
+   * 打印部署阶段开始
+   */
+  stage(name: string) {
+    this.newLine()
+    console.log(kleur.magenta().bold(`${this.prefix}▶ ${name}`))
+  }
 }
 
 // 导出默认实例
