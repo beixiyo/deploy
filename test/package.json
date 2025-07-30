@@ -4,7 +4,9 @@
   "description": "",
   "type": "commonjs",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "node ./moduleTest/test.cjs && node ./moduleTest/test.mjs"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC"

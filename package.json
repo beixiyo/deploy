@@ -1,6 +1,6 @@
 {
   "name": "@jl-org/deploy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "一键部署项目到服务器",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -16,17 +16,22 @@
     },
     "import": {
       "types": "./dist/index.d.ts",
-      "default": "./dist/index.ts"
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
     "build": "tsup",
     "prepublishOnly": "npm run build",
-    "test": "node test/deploy.cjs"
+    "test": "node test/deploy.cjs",
+    "test:module": "node test/moduleTest/test.cjs && node test/moduleTest/test.mjs"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "dependencies": {
     "archiver": "7.0.1",
     "kleur": "^4.1.5",
+    "inquirer": "^12.9.0",
     "ssh2": "1.16.0"
   },
   "devDependencies": {
@@ -35,7 +40,6 @@
     "@types/node": "^20.17.16",
     "@types/ssh2": "^1.15.4",
     "tsup": "^8.5.0",
-    "inquirer": "^12.9.0",
     "typescript": "^5.7.3"
   },
   "keywords": [
