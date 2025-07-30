@@ -1,4 +1,5 @@
 import type { Client, ConnectConfig } from 'ssh2'
+import type { BuildHookContext, CleanupHookContext, CompressHookContext, ConnectHookContext, DeployHookContext, ErrorHookContext, UploadHookContext } from './hook'
 import type { PartRequired } from '@jl-org/ts-tool'
 
 
@@ -119,6 +120,87 @@ export interface DeployOpts {
    * 自定义部署行为，如果传递了该函数，则会覆盖默认部署行为，deployCmd 参数不会生效
    */
   customDeploy?: (servers: Client[], connectInfos: ConnectInfo[]) => Promise<void>
+
+  // ==================== Hooks ====================
+
+  /**
+   * 构建阶段开始前的回调
+   * @param context 构建上下文信息
+   */
+  onBeforeBuild?: (context: BuildHookContext) => Promise<void> | void
+
+  /**
+   * 构建阶段完成后的回调
+   * @param context 构建上下文信息
+   */
+  onAfterBuild?: (context: BuildHookContext) => Promise<void> | void
+
+  /**
+   * 压缩阶段开始前的回调
+   * @param context 压缩上下文信息
+   */
+  onBeforeCompress?: (context: CompressHookContext) => Promise<void> | void
+
+  /**
+   * 压缩阶段完成后的回调
+   * @param context 压缩上下文信息
+   */
+  onAfterCompress?: (context: CompressHookContext) => Promise<void> | void
+
+  /**
+   * 连接阶段开始前的回调
+   * @param context 连接上下文信息
+   */
+  onBeforeConnect?: (context: ConnectHookContext) => Promise<void> | void
+
+  /**
+   * 连接阶段完成后的回调
+   * @param context 连接上下文信息
+   */
+  onAfterConnect?: (context: ConnectHookContext) => Promise<void> | void
+
+  /**
+   * 上传阶段开始前的回调
+   * @param context 上传上下文信息
+   */
+  onBeforeUpload?: (context: UploadHookContext) => Promise<void> | void
+
+  /**
+   * 上传阶段完成后的回调
+   * @param context 上传上下文信息
+   */
+  onAfterUpload?: (context: UploadHookContext) => Promise<void> | void
+
+  /**
+   * 部署阶段开始前的回调
+   * @param context 部署上下文信息
+   */
+  onBeforeDeploy?: (context: DeployHookContext) => Promise<void> | void
+
+  /**
+   * 部署阶段完成后的回调
+   * @param context 部署上下文信息
+   */
+  onAfterDeploy?: (context: DeployHookContext) => Promise<void> | void
+
+  /**
+   * 清理阶段开始前的回调
+   * @param context 清理上下文信息
+   */
+  onBeforeCleanup?: (context: CleanupHookContext) => Promise<void> | void
+
+  /**
+   * 清理阶段完成后的回调
+   * @param context 清理上下文信息
+   */
+  onAfterCleanup?: (context: CleanupHookContext) => Promise<void> | void
+
+  /**
+   * 全局错误处理回调
+   * @param context 错误上下文信息
+   * @returns 返回 true 表示错误已处理，继续执行；返回 false 或不返回表示重新抛出错误
+   */
+  onError?: (context: ErrorHookContext) => Promise<boolean | void> | boolean | void
 }
 
 export type PartRequiredDeployOpts = PartRequired<
@@ -135,34 +217,3 @@ export type PartRequiredDeployOpts = PartRequired<
 >
 
 export type ConnectInfo = (PartRequired<ConnectConfig, 'host'> & { name?: string })
-
-/**
- * 日志级别枚举
- */
-export enum LogLevel {
-  INFO = 'INFO',
-  SUCCESS = 'SUCCESS',
-  WARNING = 'WARNING',
-  ERROR = 'ERROR',
-  DEBUG = 'DEBUG'
-}
-
-/**
- * 进度显示配置
- */
-export interface ProgressConfig {
-  /** 进度条前缀信息 */
-  message: string
-  /** 当前进度 */
-  current: number
-  /** 总进度 */
-  total: number
-  /** 前缀（如服务器名称） */
-  prefix?: string
-  /** 显示类型：'percentage' 显示百分比，'fraction' 显示分数，'auto' 自动判断 */
-  displayType?: 'percentage' | 'fraction' | 'auto'
-  /** 自定义进度文本，如果提供则忽略 displayType */
-  customText?: string
-  /** 是否在同一行更新（避免刷屏） */
-  sameLine?: boolean
-}

@@ -1,6 +1,6 @@
 import { Client } from 'ssh2'
 import { build } from './build'
-import type { DeployOpts } from './types'
+import type { DeployOpts, BuildHookContext, CompressHookContext, ConnectHookContext, DeployHookContext, CleanupHookContext } from './types'
 import { startZip } from './startZip'
 import { connectAndUpload } from './connectAndUpload'
 import { unzipAndDeploy } from './unzipAndDeploy'
@@ -9,6 +9,8 @@ import { getOpts } from './getOpts'
 import { logger } from './logger'
 import { dirname } from 'node:path'
 import { InteractiveDeployer, showInteractiveModeInfo, showAutoModeInfo } from './interactive'
+import { executeHook, handleError } from './hookAndError'
+import { DeployErrorCode, DeployError } from './types'
 
 
 export async function deploy(deployOpts: DeployOpts) {
@@ -34,18 +36,37 @@ export async function deploy(deployOpts: DeployOpts) {
       || !opts.remoteZipPath
       || !opts.remoteUnzipDir
     ) {
-      throw new Error('distDir, zipPath, remoteZipPath, remoteUnzipDir 必须配置')
+      throw new DeployError(
+        DeployErrorCode.CONFIG_MISSING_REQUIRED,
+        'distDir, zipPath, remoteZipPath, remoteUnzipDir 必须配置'
+      )
     }
 
     // 检查 remoteUnzipDir 不能与 remoteZipPath 目录相同
     const remoteZipDir = dirname(opts.remoteZipPath)
     if (remoteZipDir === opts.remoteUnzipDir) {
-      throw new Error('remoteUnzipDir 不能与 remoteZipPath 的目录相同，因为部署过程会先删除 remoteUnzipDir')
+      throw new DeployError(
+        DeployErrorCode.CONFIG_VALIDATION_FAILED,
+        'remoteUnzipDir 不能与 remoteZipPath 的目录相同，因为部署过程会先删除 remoteUnzipDir'
+      )
     }
   }
   catch (error) {
-    logger.error('配置验证失败', error)
-    throw error
+    const errorHandled = await handleError(
+      error as Error,
+      opts.onError,
+      {
+        opts,
+        stage: 'validation',
+        startTime,
+        canRetry: false
+      }
+    )
+
+    if (!errorHandled) {
+      logger.error('配置验证失败', error)
+      throw error
+    }
   }
 
   // 显示部署配置信息
@@ -67,46 +88,138 @@ export async function deploy(deployOpts: DeployOpts) {
     // 构建阶段
     logger.stage('构建阶段')
 
-    if (interactiveDeployer) {
-      const shouldContinue = await interactiveDeployer.confirmBuildStage()
-      if (!shouldContinue) {
-        interactiveDeployer.handleUserCancel('构建')
-        return
-      }
+    const buildContext: BuildHookContext = {
+      opts,
+      stage: 'build',
+      startTime,
+      buildCmd: opts.buildCmd,
+      skipBuild: opts.skipBuild
     }
 
-    if (opts.skipBuild) {
-      logger.info('跳过构建步骤')
-      // 检查构建产物是否存在
-      if (!existsSync(opts.distDir)) {
-        throw new Error(`跳过构建，但构建产物目录 ${opts.distDir} 不存在，请先执行构建或关闭 skipBuild 选项`)
+    try {
+      await executeHook(opts.onBeforeBuild, buildContext)
+
+      if (interactiveDeployer) {
+        const shouldContinue = await interactiveDeployer.confirmBuildStage()
+        if (!shouldContinue) {
+          interactiveDeployer.handleUserCancel('构建')
+          return
+        }
       }
+
+      if (opts.skipBuild) {
+        logger.info('跳过构建步骤')
+        // 检查构建产物是否存在
+        if (!existsSync(opts.distDir)) {
+          throw new DeployError(
+            DeployErrorCode.BUILD_DIST_NOT_FOUND,
+            `跳过构建，但构建产物目录 ${opts.distDir} 不存在，请先执行构建或关闭 skipBuild 选项`
+          )
+        }
+      }
+      else {
+        await build(opts.buildCmd)
+      }
+
+      await executeHook(opts.onAfterBuild, buildContext)
     }
-    else {
-      await build(opts.buildCmd)
+    catch (error) {
+      const errorHandled = await handleError(
+        error as Error,
+        opts.onError,
+        {
+          opts,
+          stage: 'build',
+          startTime,
+          canRetry: false
+        }
+      )
+
+      if (!errorHandled) {
+        throw error
+      }
     }
 
     // 压缩阶段
     logger.stage('压缩阶段')
 
-    if (interactiveDeployer) {
-      const shouldContinue = await interactiveDeployer.confirmCompressStage()
-      if (!shouldContinue) {
-        interactiveDeployer.handleUserCancel('压缩')
-        return
-      }
+    const compressContext: CompressHookContext = {
+      opts,
+      stage: 'compress',
+      startTime,
+      distDir: opts.distDir,
+      zipPath: opts.zipPath
     }
 
-    await startZip(opts)
+    try {
+      await executeHook(opts.onBeforeCompress, compressContext)
+
+      if (interactiveDeployer) {
+        const shouldContinue = await interactiveDeployer.confirmCompressStage()
+        if (!shouldContinue) {
+          interactiveDeployer.handleUserCancel('压缩')
+          return
+        }
+      }
+
+      await startZip(opts)
+      await executeHook(opts.onAfterCompress, compressContext)
+    }
+    catch (error) {
+      const errorHandled = await handleError(
+        error as Error,
+        opts.onError,
+        {
+          opts,
+          stage: 'compress',
+          startTime,
+          canRetry: false
+        }
+      )
+
+      if (!errorHandled) {
+        throw error
+      }
+    }
 
     // 上传和部署阶段
     logger.stage('上传和部署阶段')
 
-    if (interactiveDeployer) {
-      const shouldContinue = await interactiveDeployer.confirmUploadAndDeployStage()
-      if (!shouldContinue) {
-        interactiveDeployer.handleUserCancel('上传和部署')
-        return
+    const connectContext: ConnectHookContext = {
+      opts,
+      stage: 'connect',
+      startTime,
+      connectInfos: opts.connectInfos,
+      concurrent: opts.concurrent
+    }
+
+    try {
+      await executeHook(opts.onBeforeConnect, connectContext)
+
+      if (interactiveDeployer) {
+        const shouldContinue = await interactiveDeployer.confirmUploadAndDeployStage()
+        if (!shouldContinue) {
+          interactiveDeployer.handleUserCancel('上传和部署')
+          return
+        }
+      }
+
+      await executeHook(opts.onAfterConnect, connectContext)
+    }
+    catch (error) {
+      const errorHandled = await handleError(
+        error as Error,
+        opts.onError,
+        {
+          opts,
+          stage: 'connect',
+          startTime,
+          canRetry: false
+        }
+      )
+
+      if (!errorHandled) {
+        throw error
       }
     }
 
@@ -127,13 +240,24 @@ export async function deploy(deployOpts: DeployOpts) {
     }
 
     async function deployConcurrent() {
+      const deployContext: DeployHookContext = {
+        opts,
+        stage: 'deploy',
+        startTime,
+        deployCmd: opts.deployCmd,
+        sshClients: []
+      }
+
       try {
+        await executeHook(opts.onBeforeDeploy, deployContext)
+
         // 自定义上传或使用默认上传
         const currentSShServers = deployOpts.customUpload
           ? await deployOpts.customUpload(() => new Client(), opts.connectInfos)
           : await connectAndUpload(opts)
 
         sshServers.push(...currentSShServers)
+        deployContext.sshClients = currentSShServers
 
         if (currentSShServers.length > 0) {
           // 自定义部署或使用默认部署
@@ -144,10 +268,27 @@ export async function deploy(deployOpts: DeployOpts) {
           successCount = opts.connectInfos.length
           logger.success('所有服务器部署成功')
         }
+
+        await executeHook(opts.onAfterDeploy, deployContext)
       }
       catch (error) {
         failCount = opts.connectInfos.length
-        logger.error('并发部署失败', error)
+
+        const errorHandled = await handleError(
+          error as Error,
+          opts.onError,
+          {
+            opts,
+            stage: 'deploy',
+            startTime,
+            canRetry: false
+          }
+        )
+
+        if (!errorHandled) {
+          logger.error('并发部署失败', error)
+          throw error
+        }
       }
     }
 
@@ -157,8 +298,20 @@ export async function deploy(deployOpts: DeployOpts) {
         const connectInfo = opts.connectInfos[i]
         const serverName = connectInfo.name || connectInfo.host
 
+        const deployContext: DeployHookContext = {
+          opts,
+          stage: 'deploy',
+          startTime,
+          connectInfo,
+          serverIndex: i,
+          deployCmd: opts.deployCmd,
+          sshClients: []
+        }
+
         try {
           logger.info(`开始部署服务器 ${i + 1}/${opts.connectInfos.length}: ${serverName}`)
+
+          await executeHook(opts.onBeforeDeploy, deployContext)
 
           // 创建单个服务器的配置
           const singleServerOpts = {
@@ -172,6 +325,7 @@ export async function deploy(deployOpts: DeployOpts) {
             : await connectAndUpload(singleServerOpts)
 
           sshServers.push(...currentSShServers)
+          deployContext.sshClients = currentSShServers
 
           if (currentSShServers.length > 0) {
             // 自定义部署或使用默认部署
@@ -182,11 +336,29 @@ export async function deploy(deployOpts: DeployOpts) {
             successCount++
             logger.success(`服务器 ${serverName} 部署成功`)
           }
+
+          await executeHook(opts.onAfterDeploy, deployContext)
         }
         catch (error) {
           failCount++
-          logger.error(`服务器 ${serverName} 部署失败`, error)
-          // 继续处理其他服务器，不中断流程
+
+          const errorHandled = await handleError(
+            error as Error,
+            opts.onError,
+            {
+              opts,
+              stage: 'deploy',
+              startTime,
+              connectInfo,
+              serverIndex: i,
+              canRetry: false
+            }
+          )
+
+          if (!errorHandled) {
+            logger.error(`服务器 ${serverName} 部署失败`, error)
+            // 继续处理其他服务器，不中断流程
+          }
         }
       }
     }
@@ -194,20 +366,52 @@ export async function deploy(deployOpts: DeployOpts) {
     // 清理阶段
     logger.stage('清理阶段')
 
-    if (interactiveDeployer) {
-      const shouldContinue = await interactiveDeployer.confirmCleanupStage()
-      if (!shouldContinue) {
-        logger.info('用户跳过了清理阶段')
-      }
-      else if (opts.needRemoveZip) {
-        logger.info(`清理本地临时文件: ${opts.zipPath}`)
-        rmSync(opts.zipPath)
-      }
+    const cleanupContext: CleanupHookContext = {
+      opts,
+      stage: 'cleanup',
+      startTime,
+      zipPath: opts.zipPath,
+      needRemoveZip: opts.needRemoveZip
     }
-    else {
-      if (opts.needRemoveZip) {
-        logger.info(`清理本地临时文件: ${opts.zipPath}`)
-        rmSync(opts.zipPath)
+
+    try {
+      await executeHook(opts.onBeforeCleanup, cleanupContext)
+
+      if (interactiveDeployer) {
+        const shouldContinue = await interactiveDeployer.confirmCleanupStage()
+        if (!shouldContinue) {
+          logger.info('用户跳过了清理阶段')
+        }
+        else if (opts.needRemoveZip) {
+          logger.info(`清理本地临时文件: ${opts.zipPath}`)
+          rmSync(opts.zipPath)
+        }
+      }
+      else {
+        if (opts.needRemoveZip) {
+          logger.info(`清理本地临时文件: ${opts.zipPath}`)
+          rmSync(opts.zipPath)
+        }
+      }
+
+      await executeHook(opts.onAfterCleanup, cleanupContext)
+    }
+    catch (error) {
+      const errorHandled = await handleError(
+        error as Error,
+        opts.onError,
+        {
+          opts,
+          stage: 'cleanup',
+          startTime,
+          canRetry: false
+        }
+      )
+
+      if (!errorHandled) {
+        logger.error('清理阶段失败', error)
+        // 清理失败不应阻塞主流程，仅记录警告
+        logger.warning('清理失败，但不影响部署结果')
       }
     }
 
@@ -216,23 +420,36 @@ export async function deploy(deployOpts: DeployOpts) {
     const duration = ((endTime - startTime) / 1000).toFixed(2)
 
     logger.title('部署完成')
-      logger.table({
-        '部署总数': opts.connectInfos.length.toString(),
-        '成功数量': successCount.toString(),
-        '失败数量': failCount.toString(),
-        '总耗时': `${duration} 秒`,
-      })
+    logger.table({
+      '部署总数': opts.connectInfos.length.toString(),
+      '成功数量': successCount.toString(),
+      '失败数量': failCount.toString(),
+      '总耗时': `${duration} 秒`,
+    })
 
-      if (failCount > 0) {
-        logger.warning('部分服务器部署失败，请检查日志')
-      }
-      else {
-        logger.success('所有服务器部署成功')
-      }
+    if (failCount > 0) {
+      logger.warning('部分服务器部署失败，请检查日志')
+    }
+    else {
+      logger.success('所有服务器部署成功')
+    }
   }
   catch (error: any) {
-    logger.error('部署过程中发生错误', error)
-    throw error // 重新抛出错误，让调用者能够捕获
+    const errorHandled = await handleError(
+      error,
+      opts.onError,
+      {
+        opts,
+        stage: 'unknown',
+        startTime,
+        canRetry: false
+      }
+    )
+
+    if (!errorHandled) {
+      logger.error('部署过程中发生错误', error)
+      throw error // 重新抛出错误，让调用者能够捕获
+    }
   }
   finally {
     logger.info('关闭所有 SSH 连接')

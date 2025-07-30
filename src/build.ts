@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process'
 import { logger } from './logger'
+import { DeployErrorCode, DeployError } from './types'
+
 
 /**
  * 本地构建项目
@@ -19,10 +21,24 @@ export async function build(cmd: string) {
         resolve()
       }
       else {
-        const error = new Error('构建失败')
+        const error = new DeployError(
+          DeployErrorCode.BUILD_COMMAND_FAILED,
+          `构建命令执行失败，退出码: ${code}`,
+          { exitCode: code, command: cmd }
+        )
         logger.error('构建失败', error)
         reject(error)
       }
+    })
+
+    proc.on('error', (err) => {
+      const error = new DeployError(
+        DeployErrorCode.BUILD_COMMAND_FAILED,
+        `构建命令执行出错: ${err.message}`,
+        { originalError: err, command: cmd }
+      )
+      logger.error('构建过程中发生错误', error)
+      reject(error)
     })
   })
 }

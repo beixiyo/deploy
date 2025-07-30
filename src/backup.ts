@@ -3,6 +3,7 @@ import { LogLevel, type ConnectInfo } from './types'
 import { ensureRemoteDirExists, getLocalToday, toUnixPath, updateProgress } from './tool'
 import { join } from 'node:path'
 import { logger } from './logger'
+import { DeployErrorCode, DeployError } from './types'
 
 
 export async function backup(
@@ -25,7 +26,14 @@ export async function backup(
     await proceedWithBackup()
   }
   catch (error) {
-    console.error(`---${connectInfo.name ?? ''}: 备份文件 ${remoteBackupFileFullName} 上传失败 (${remoteBackupFileFullName})---`, error)
+    const deployError = new DeployError(
+      DeployErrorCode.BACKUP_UPLOAD_FAILED,
+      `备份文件 ${remoteBackupFileFullName} 上传失败`,
+      error,
+      serverName
+    )
+    logger.serverLog(serverName, deployError.message, LogLevel.ERROR)
+    throw deployError
   }
 
   function proceedWithBackup() {
@@ -56,13 +64,27 @@ export async function backup(
             },
             async (backupUploadErr) => {
               if (backupUploadErr) {
-                logger.serverLog(connectInfo.name ?? '', `备份压缩包上传失败 (${remoteBackupFileFullName})`, LogLevel.ERROR)
-                return reject(backupUploadErr)
+                const error = new DeployError(
+                  DeployErrorCode.BACKUP_UPLOAD_FAILED,
+                  `备份压缩包上传失败 (${remoteBackupFileFullName})`,
+                  backupUploadErr,
+                  serverName
+                )
+                logger.serverLog(connectInfo.name ?? '', error.message, LogLevel.ERROR)
+                return reject(error)
               }
+
               logger.serverLog(connectInfo.name ?? '', `备份压缩包上传成功 (${remoteBackupFileFullName})`, LogLevel.SUCCESS)
 
-              await clearOldBackup()
-              resolve()
+              try {
+                await clearOldBackup()
+                resolve()
+              }
+              catch (cleanupError) {
+                // 清理失败不应阻塞主流程
+                logger.serverLog(connectInfo.name ?? '', '清理旧备份失败，但不影响主流程', LogLevel.WARNING)
+                resolve()
+              }
             }
           )
         }
@@ -110,8 +132,12 @@ export async function backup(
         }
       }
       catch (cleanupErr) {
-        logger.serverLog(connectInfo.name ?? '', '清理旧备份时出错', LogLevel.ERROR)
-        // 清理失败不应阻塞主流程
+        throw new DeployError(
+          DeployErrorCode.BACKUP_CLEANUP_FAILED,
+          '清理旧备份时出错',
+          cleanupErr,
+          serverName
+        )
       }
     }
   }

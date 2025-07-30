@@ -5,6 +5,10 @@ const { homedir } = require('node:os')
 const { readFileSync } = require('node:fs')
 
 const privateKey = readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8')
+
+/**
+ * @type {import('@jl-org/deploy').ConnectInfo[]}
+ */
 const connectInfos = [
   {
     host: 'yourHost',

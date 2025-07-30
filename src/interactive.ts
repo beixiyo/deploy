@@ -1,6 +1,8 @@
 import inquirer from 'inquirer'
 import { logger } from './logger'
 import type { PartRequiredDeployOpts } from './types'
+import { DeployErrorCode, DeployError } from './types'
+
 
 /**
  * 交互式部署处理类
@@ -26,16 +28,25 @@ export class InteractiveDeployer {
     logger.log(`即将执行构建命令: ${this.opts.buildCmd}`)
     logger.log('这将会编译您的项目代码并生成构建产物')
 
-    const { shouldContinue } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldContinue',
-        message: '是否继续执行构建？',
-        default: true,
-      },
-    ])
+    try {
+      const { shouldContinue } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldContinue',
+          message: '是否继续执行构建？',
+          default: true,
+        },
+      ])
 
-    return shouldContinue
+      return shouldContinue
+    }
+    catch (error) {
+      throw new DeployError(
+        DeployErrorCode.USER_CANCELLED,
+        '用户交互过程中发生错误',
+        error
+      )
+    }
   }
 
   /**
@@ -48,16 +59,25 @@ export class InteractiveDeployer {
     logger.log(`目标文件: ${this.opts.zipPath}`)
     logger.log('这将会将构建产物压缩为 tar.gz 格式以便上传')
 
-    const { shouldContinue } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldContinue',
-        message: '是否继续执行压缩？',
-        default: true,
-      },
-    ])
+    try {
+      const { shouldContinue } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldContinue',
+          message: '是否继续执行压缩？',
+          default: true,
+        },
+      ])
 
-    return shouldContinue
+      return shouldContinue
+    }
+    catch (error) {
+      throw new DeployError(
+        DeployErrorCode.USER_CANCELLED,
+        '用户交互过程中发生错误',
+        error
+      )
+    }
   }
 
   /**
@@ -85,16 +105,25 @@ export class InteractiveDeployer {
     logger.log('  4. 在远程服务器执行部署命令')
     logger.log('  5. 解压并部署新版本')
 
-    const { shouldContinue } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldContinue',
-        message: '是否继续执行上传和部署？',
-        default: true,
-      },
-    ])
+    try {
+      const { shouldContinue } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldContinue',
+          message: '是否继续执行上传和部署？',
+          default: true,
+        },
+      ])
 
-    return shouldContinue
+      return shouldContinue
+    }
+    catch (error) {
+      throw new DeployError(
+        DeployErrorCode.USER_CANCELLED,
+        '用户交互过程中发生错误',
+        error
+      )
+    }
   }
 
   /**
@@ -111,16 +140,25 @@ export class InteractiveDeployer {
     logger.log(`即将删除本地临时文件: ${this.opts.zipPath}`)
     logger.log('这将会清理部署过程中生成的临时压缩文件')
 
-    const { shouldContinue } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'shouldContinue',
-        message: '是否继续执行清理？',
-        default: true,
-      },
-    ])
+    try {
+      const { shouldContinue } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'shouldContinue',
+          message: '是否继续执行清理？',
+          default: true,
+        },
+      ])
 
-    return shouldContinue
+      return shouldContinue
+    }
+    catch (error) {
+      throw new DeployError(
+        DeployErrorCode.USER_CANCELLED,
+        '用户交互过程中发生错误',
+        error
+      )
+    }
   }
 
   /**
@@ -129,7 +167,11 @@ export class InteractiveDeployer {
   handleUserCancel(stage: string): void {
     logger.warning(`用户取消了 ${stage} 阶段`)
     logger.info('部署流程已中止')
-    process.exit(0)
+    const error = new DeployError(
+      DeployErrorCode.USER_CANCELLED,
+      `用户取消了 ${stage} 阶段`
+    )
+    throw error
   }
 }
 

@@ -1,4 +1,6 @@
 import type { Client, SFTPWrapper, Stats } from 'ssh2'
+import { DeployErrorCode, DeployError } from './types'
+
 
 /**
  * 失败后自动重试请求
@@ -15,7 +17,11 @@ export async function retryTask<T>(
       const remainingRetries = maxCount - 1
       if (remainingRetries <= 0) {
         console.error('任务失败，重试次数已耗尽:', err)
-        return Promise.reject('重试次数耗尽')
+        throw new DeployError(
+          DeployErrorCode.UPLOAD_RETRY_EXHAUSTED,
+          '重试次数耗尽',
+          err
+        )
       }
       else {
         console.warn(`任务失败，剩余重试次数: ${remainingRetries}`, err)
@@ -84,7 +90,11 @@ export async function ensureRemoteDirExists(
           }
           else {
             console.error(`SFTP: Error stating path ${path}:`, err)
-            statReject(err)
+            statReject(new DeployError(
+              DeployErrorCode.UPLOAD_REMOTE_DIR_FAILED,
+              `SFTP: 检查路径 ${path} 失败`,
+              err
+            ))
           }
         }
         else {
@@ -97,9 +107,13 @@ export async function ensureRemoteDirExists(
       if (stats) {
         // 路径存在
         if (stats.isFile()) {
-          const errMsg = `SFTP: 路径 ${path} 已存在但不是一个目录`
-          console.error(errMsg)
-          throw new Error(errMsg)
+          const error = new DeployError(
+            DeployErrorCode.UPLOAD_REMOTE_DIR_FAILED,
+            `SFTP: 路径 ${path} 已存在但不是一个目录`
+          )
+          console.error(error.message)
+          reject(error)
+          return
         }
         else if (stats.isDirectory()) {
           resolve() // 目录已存在，任务完成
@@ -108,10 +122,13 @@ export async function ensureRemoteDirExists(
         else {
           // 既不是文件也不是目录 (例如符号链接到不存在的目标，或其他类型)
           // 根据需求，你可能希望处理这种情况，但对于 "确保目录存在" 的目标，这通常是个问题
-          const errMsg = `SFTP: 路径 ${path} 既不是文件也不是目录`
-          console.error(errMsg)
-          reject(new Error(errMsg))
-          throw new Error(errMsg)
+          const error = new DeployError(
+            DeployErrorCode.UPLOAD_REMOTE_DIR_FAILED,
+            `SFTP: 路径 ${path} 既不是文件也不是目录`
+          )
+          console.error(error.message)
+          reject(error)
+          return
         }
       }
       else {
@@ -127,15 +144,23 @@ export async function ensureRemoteDirExists(
           sshServer.exec(command, (err, stream) => {
             if (err) {
               console.error(`SSH: Error executing command "${command}":`, err)
-              return execReject(err)
+              return execReject(new DeployError(
+                DeployErrorCode.BACKUP_CREATE_DIR_FAILED,
+                `SSH: 执行命令 "${command}" 失败`,
+                err
+              ))
             }
 
             let stderrOutput = ''
             stream.on('close', (code: number | null, signal?: string) => {
               if (code !== 0) {
-                const errMsg = `SSH: Command "${command}" failed with code ${code}${signal ? ` (signal: ${signal})` : ''}. Stderr: ${stderrOutput}`
-                console.error(errMsg)
-                execReject(new Error(errMsg))
+                const error = new DeployError(
+                  DeployErrorCode.BACKUP_CREATE_DIR_FAILED,
+                  `SSH: 命令 "${command}" 执行失败，退出码 ${code}${signal ? ` (信号: ${signal})` : ''}`,
+                  { exitCode: code, signal, stderr: stderrOutput }
+                )
+                console.error(error.message)
+                execReject(error)
               }
               else {
                 console.log(`SSH: 目录 ${path} 创建成功`)
