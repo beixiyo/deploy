@@ -2,7 +2,8 @@ import archiver from 'archiver'
 import { createWriteStream, existsSync, lstatSync, mkdirSync } from 'fs'
 import { dirname } from 'path'
 import type { DeployOpts } from './types'
-import { logger, LogLevel } from './logger'
+import { logger } from './logger'
+import { updateProgress } from './tool'
 
 
 /**
@@ -41,6 +42,8 @@ export async function startZip(
     }
 
     // 定义打包格式和相关配置
+    let lastProgressPercent = -1  // 记录上次显示的百分比，用于防抖
+
     const archive = archiver(
       'tar',
       {
@@ -53,14 +56,20 @@ export async function startZip(
         reject(err)
       })
       .on('progress', (progress) => {
-        // 显示压缩进度
-        if (progress.fs.totalBytes > 0) {
-          logger.progress(
-            '压缩进度:',
-            progress.fs.processedBytes,
-            progress.fs.totalBytes
-          )
-        }
+        updateProgress(
+          progress.fs.processedBytes,
+          progress.fs.totalBytes,
+          (percent, progressText) => {
+            logger.progress({
+              message: '压缩进度:',
+              current: progress.fs.processedBytes,
+              total: progress.fs.totalBytes,
+              displayType: 'percentage',
+              customText: progressText,
+              sameLine: true
+            })
+          }
+        )
       })
 
     const output = createWriteStream(zipPath)

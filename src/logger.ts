@@ -12,6 +12,26 @@ export enum LogLevel {
 }
 
 /**
+ * 进度显示配置
+ */
+export interface ProgressConfig {
+  /** 进度条前缀信息 */
+  message: string
+  /** 当前进度 */
+  current: number
+  /** 总进度 */
+  total: number
+  /** 前缀（如服务器名称） */
+  prefix?: string
+  /** 显示类型：'percentage' 显示百分比，'fraction' 显示分数，'auto' 自动判断 */
+  displayType?: 'percentage' | 'fraction' | 'auto'
+  /** 自定义进度文本，如果提供则忽略 displayType */
+  customText?: string
+  /** 是否在同一行更新（避免刷屏） */
+  sameLine?: boolean
+}
+
+/**
  * 日志管理类
  * 提供彩色打印和不同日志级别的功能
  */
@@ -99,17 +119,57 @@ export class Logger {
 
   /**
    * 显示进度条
-   * @param message 进度条前缀信息
-   * @param current 当前进度
-   * @param total 总进度
+   * @param config 进度配置
    */
-  progress(message: string, current: number, total: number) {
+  progress(config: ProgressConfig) {
+    const {
+      message,
+      current,
+      total,
+      prefix,
+      displayType = 'auto',
+      customText,
+      sameLine = true
+    } = config
+
     const percent = Math.round((current / total) * 100)
     const progressBar = this.getProgressBar(percent)
-    process.stdout.write(`\r${this.prefix}${message} ${progressBar} ${percent}%`)
+    const prefixText = prefix ? `[${prefix}] ` : ''
 
-    if (current >= total) {
-      process.stdout.write('\n')
+    let progressText: string
+    if (customText) {
+      progressText = customText
+    }
+    else {
+      switch (displayType) {
+        case 'percentage':
+          progressText = `${percent}%`
+          break
+        case 'fraction':
+          progressText = `${current}/${total}`
+          break
+        case 'auto':
+        default:
+          // 如果是小数值(可能是文件数量)，显示 "x/y"，否则显示百分比
+          progressText = total < 1000
+            ? `${current}/${total}`
+            : `${percent}%`
+          break
+      }
+    }
+
+    if (sameLine) {
+      // 使用 \r 确保在同一行更新，不换行
+      process.stdout.write(`\r${this.prefix}${prefixText}${message} ${progressBar} ${progressText}`)
+
+      // 只有在完成时才换行
+      if (current >= total) {
+        process.stdout.write('\n')
+      }
+    }
+    else {
+      // 正常换行显示
+      console.log(`${this.prefix}${prefixText}${message} ${progressBar} ${progressText}`)
     }
   }
 

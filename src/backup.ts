@@ -1,7 +1,8 @@
-import { Client, type SFTPWrapper } from 'ssh2';
-import type { ConnectInfo } from './types';
-import { ensureRemoteDirExists, getLocalToday, toUnixPath } from './tool';
-import { join } from 'node:path';
+import { Client, type SFTPWrapper } from 'ssh2'
+import type { ConnectInfo } from './types'
+import { ensureRemoteDirExists, getLocalToday, toUnixPath, updateProgress } from './tool'
+import { join } from 'node:path'
+import { logger, LogLevel } from './logger'
 
 
 export async function backup(
@@ -15,6 +16,7 @@ export async function backup(
   }: BackupOpts
 ) {
   const backupFileName = `${getLocalToday()}.tar.gz`
+  const serverName = connectInfo.name || connectInfo.host
   const remoteBackupFileFullName = toUnixPath(join(remoteBackupDir, backupFileName))
 
   try {
@@ -32,21 +34,40 @@ export async function backup(
       sftp.stat(remoteBackupFileFullName, (statErr) => {
         // 文件不存在或发生其他错误，尝试上传
         if (statErr) {
-          console.log(`---${connectInfo.name ?? ''}: 准备上传备份文件到 ${remoteBackupFileFullName}---`)
+          logger.serverLog(connectInfo.name ?? '', `准备上传备份文件到 ${remoteBackupFileFullName}`)
 
-          sftp.fastPut(zipPath, remoteBackupFileFullName, {}, async (backupUploadErr) => {
-            if (backupUploadErr) {
-              console.error(`---${connectInfo.name ?? ''}: 备份压缩包上传失败 (${remoteBackupFileFullName})---`, backupUploadErr)
-              return reject(backupUploadErr)
+          sftp.fastPut(
+            zipPath,
+            remoteBackupFileFullName,
+            {
+              step: (current, _nb, total) => {
+                updateProgress(current, total, (percent, progressText) => {
+                  logger.progress({
+                    message: '备份上传进度:',
+                    current,
+                    total,
+                    prefix: serverName,
+                    displayType: 'percentage',
+                    customText: progressText,
+                    sameLine: true
+                  })
+                })
+              }
+            },
+            async (backupUploadErr) => {
+              if (backupUploadErr) {
+                logger.serverLog(connectInfo.name ?? '', `备份压缩包上传失败 (${remoteBackupFileFullName})`, LogLevel.ERROR)
+                return reject(backupUploadErr)
+              }
+              logger.serverLog(connectInfo.name ?? '', `备份压缩包上传成功 (${remoteBackupFileFullName})`, LogLevel.SUCCESS)
+
+              await clearOldBackup()
+              resolve()
             }
-            console.log(`---${connectInfo.name ?? ''}: 备份压缩包上传成功 (${remoteBackupFileFullName})---`)
-
-            await clearOldBackup()
-            resolve()
-          })
+          )
         }
         else {
-          console.warn(`---${connectInfo.name ?? ''}: 备份文件 ${remoteBackupFileFullName} 已存在，跳过备份---`)
+          logger.serverLog(connectInfo.name ?? '', `备份文件 ${remoteBackupFileFullName} 已存在，跳过备份`, LogLevel.WARNING)
           resolve()
         }
       })
@@ -76,11 +97,11 @@ export async function backup(
             await new Promise<void>((resDel, rejDel) => {
               sftp.unlink(filePathToDelete, (delErr) => {
                 if (delErr) {
-                  console.error(`---${connectInfo.name ?? ''}: 删除旧备份文件 ${filePathToDelete} 失败---`, delErr)
+                  logger.serverLog(connectInfo.name ?? '', `删除旧备份文件 ${filePathToDelete} 失败`, LogLevel.ERROR)
                   // 不阻塞后续操作，只记录错误
                 }
                 else {
-                  console.log(`---${connectInfo.name ?? ''}: 已删除旧备份文件 ${filePathToDelete}---`)
+                  logger.serverLog(connectInfo.name ?? '', `已删除旧备份文件 ${filePathToDelete}`, LogLevel.SUCCESS)
                 }
                 resDel()
               })
@@ -89,7 +110,7 @@ export async function backup(
         }
       }
       catch (cleanupErr) {
-        console.error(`---${connectInfo.name ?? ''}: 清理旧备份时出错---`, cleanupErr)
+        logger.serverLog(connectInfo.name ?? '', '清理旧备份时出错', LogLevel.ERROR)
         // 清理失败不应阻塞主流程
       }
     }

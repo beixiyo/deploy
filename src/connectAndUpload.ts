@@ -1,6 +1,6 @@
 import { Client } from 'ssh2'
 import type { ConnectInfo, PartRequiredDeployOpts } from './types'
-import { ensureRemoteDirExists, retryTask } from './tool'
+import { ensureRemoteDirExists, retryTask, updateProgress } from './tool'
 import { dirname } from 'node:path'
 import { backup } from './backup'
 import { logger, LogLevel } from './logger'
@@ -101,23 +101,21 @@ function attemptUploadToServer(
             try {
               await ensureRemoteDirExists(sshServer, sftp, dirname(remoteZipPath))
 
-              // 使用 step 选项添加进度显示
-              let lastPercent = -1
-
               sftp.fastPut(
                 zipPath, remoteZipPath,
                 {
-                  step: (total: number, nb: number, fsize: number) => {
-                    // 计算百分比进度 - 使用已传输字节数除以文件总大小
-                    const percent = Math.floor((nb / fsize) * 100)
-
-                    // 每当百分比变化 5% 以上时才更新，减少日志输出频率
-                    if (percent >= lastPercent + 5 || percent === 100) {
-                      lastPercent = percent
-                      const transferredMB = (nb / (1024 * 1024)).toFixed(2)
-                      const totalMB = (fsize / (1024 * 1024)).toFixed(2)
-                      logger.serverLog(serverName, `上传进度: ${transferredMB}MB / ${totalMB}MB (${percent}%)`)
-                    }
+                  step: (current, _nb, total) => {
+                    updateProgress(current, total, (percent, progressText) => {
+                      logger.progress({
+                        message: '上传进度:',
+                        current,
+                        total,
+                        prefix: serverName,
+                        displayType: 'percentage',
+                        customText: progressText,
+                        sameLine: true
+                      })
+                    })
                   }
                 },
                 async (err) => {

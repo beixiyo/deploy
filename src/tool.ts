@@ -27,6 +27,31 @@ export async function retryTask<T>(
 }
 
 /**
+ * 更新进度
+ * @param current 当前传输的字节数
+ * @param total 总字节数
+ * @param onProgress 进度回调函数
+ */
+export function updateProgress(
+  current: number,
+  total: number,
+  onProgress: (percent: number, progressText: string) => void
+) {
+  const percent = Math.floor((current / total) * 100)
+  const transferredMB = (current / (1024 * 1024)).toFixed(2)
+  const totalMB = (total / (1024 * 1024)).toFixed(2)
+  const progressText = `${transferredMB}MB / ${totalMB}MB (${percent}%)`
+  onProgress(percent, progressText)
+
+  return {
+    percent,
+    progressText,
+    transferredMB,
+    totalMB
+  }
+}
+
+/**
  * 把路径转成类似 unix 风格的路径
  */
 export function toUnixPath(path: string): string {
