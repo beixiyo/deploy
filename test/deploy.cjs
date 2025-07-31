@@ -125,61 +125,61 @@ const config = {
     // ======================
     // * Hooks
     // ======================
-    // 构建阶段 hooks
-    onBeforeBuild: async (context) => {
-      console.log('====================> onBeforeBuild 准备开始构建...', context.buildCmd)
-    },
-    onAfterBuild: async (context) => {
-      console.log('====================> onAfterBuild 构建完成！')
-    },
+    // // 构建阶段 hooks
+    // onBeforeBuild: async (context) => {
+    //   console.log('====================> onBeforeBuild 准备开始构建...', context.buildCmd)
+    // },
+    // onAfterBuild: async (context) => {
+    //   console.log('====================> onAfterBuild 构建完成！')
+    // },
 
-    // 压缩阶段 hooks
-    onBeforeCompress: async (context) => {
-      console.log('====================> onBeforeCompress 开始压缩文件...', context.distDir)
-    },
-    onAfterCompress: async (context) => {
-      console.log('====================> onAfterCompress 压缩完成！', context.zipPath)
-    },
+    // // 压缩阶段 hooks
+    // onBeforeCompress: async (context) => {
+    //   console.log('====================> onBeforeCompress 开始压缩文件...', context.distDir)
+    // },
+    // onAfterCompress: async (context) => {
+    //   console.log('====================> onAfterCompress 压缩完成！', context.zipPath)
+    // },
 
-    // 连接阶段 hooks
-    onBeforeConnect: async (context) => {
-      console.log('====================> onBeforeConnect 准备连接服务器...', context.connectInfos.length)
-    },
-    onAfterConnect: async (context) => {
-      console.log('====================> onAfterConnect 服务器连接成功！')
-    },
+    // // 连接阶段 hooks
+    // onBeforeConnect: async (context) => {
+    //   console.log('====================> onBeforeConnect 准备连接服务器...', context.connectInfos.length)
+    // },
+    // onAfterConnect: async (context) => {
+    //   console.log('====================> onAfterConnect 服务器连接成功！')
+    // },
 
-    // 上传阶段 hooks（每个服务器单独触发）
-    onBeforeUpload: async (context) => {
-      console.log('====================> onBeforeUpload 开始上传到:', context.connectInfo?.host || '未知服务器')
-    },
-    onAfterUpload: async (context) => {
-      console.log('====================> onAfterUpload 上传成功:', context.connectInfo?.host || '未知服务器')
-    },
+    // // 上传阶段 hooks（每个服务器单独触发）
+    // onBeforeUpload: async (context) => {
+    //   console.log('====================> onBeforeUpload 开始上传到:', context.connectInfo?.host || '未知服务器')
+    // },
+    // onAfterUpload: async (context) => {
+    //   console.log('====================> onAfterUpload 上传成功:', context.connectInfo?.host || '未知服务器')
+    // },
 
-    // 部署阶段 hooks
-    onBeforeDeploy: async (context) => {
-      console.log('====================> onBeforeDeploy 开始部署...', context.sshClients.length)
-    },
-    onAfterDeploy: async (context) => {
-      console.log('====================> onAfterDeploy 部署完成！')
-    },
+    // // 部署阶段 hooks
+    // onBeforeDeploy: async (context) => {
+    //   console.log('====================> onBeforeDeploy 开始部署...', context.sshClients.length)
+    // },
+    // onAfterDeploy: async (context) => {
+    //   console.log('====================> onAfterDeploy 部署完成！')
+    // },
 
-    // 清理阶段 hooks
-    onBeforeCleanup: async (context) => {
-      console.log('====================> onBeforeCleanup 准备清理临时文件...', context.zipPath)
-    },
-    onAfterCleanup: async (context) => {
-      console.log('====================> onAfterCleanup 清理完成！')
-    },
+    // // 清理阶段 hooks
+    // onBeforeCleanup: async (context) => {
+    //   console.log('====================> onBeforeCleanup 准备清理临时文件...', context.zipPath)
+    // },
+    // onAfterCleanup: async (context) => {
+    //   console.log('====================> onAfterCleanup 清理完成！')
+    // },
 
-    // 全局错误处理 hook
-    onError: async (context) => {
-      console.error('====================> onError 部署出错:', context.error.code, context.error.message)
+    // // 全局错误处理 hook
+    // onError: async (context) => {
+    //   console.error('====================> onError 部署出错:', context.error.code, context.error.message)
 
-      // 返回 true 表示错误已处理，继续执行；返回 false 或不返回表示重新抛出错误
-      return false
-    }
+    //   // 返回 true 表示错误已处理，继续执行；返回 false 或不返回表示重新抛出错误
+    //   return false
+    // }
   }
 }
 

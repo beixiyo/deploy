@@ -64,6 +64,7 @@ function executeDeployCommand(
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     logger.info(`服务器 #${serverIndex} 开始执行部署命令`)
+    logger.info(deployCmd)
 
     sshServer.shell((err, stream) => {
       if (err) {
