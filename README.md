@@ -45,6 +45,8 @@ pnpm add @jl-org/deploy
 
 ## 🚀 基本用法
 
+[代码示例](./example/test.cjs)
+
 `scripts/deploy.cjs`
 ```js
 // @ts-check
@@ -85,7 +87,7 @@ deploy({
   remoteZipPath: '/home/dist.tar.gz', // 远程压缩文件路径
   remoteUnzipDir: '/home/test-project', // 远程解压目录
   remoteCwd: '/', // 远程命令执行路径
-  deployCmd: '', // 远程服务器部署命令，和 customDeploy 回调冲突
+  deployCmd: '', // （可选）远程服务器部署命令，已有默认值，建议不要改动。和 customDeploy 回调冲突
   
   // ======================
   // 💾 备份配置（可选）

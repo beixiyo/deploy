@@ -45,6 +45,8 @@ pnpm add @jl-org/deploy
 
 ## 🚀 Basic Usage
 
+[Code Example](./example/test.cjs)
+
 `scripts/deploy.cjs`
 ```js
 // @ts-check
@@ -85,7 +87,7 @@ deploy({
   remoteZipPath: '/home/dist.tar.gz', // Remote archive file path
   remoteUnzipDir: '/home/test-project', // Remote extraction directory
   remoteCwd: '/', // Remote command execution path
-  deployCmd: '', // Remote server deployment command, conflicts with customDeploy callback
+  deployCmd: '', // (Optional) Remote server deployment command, conflicts with customDeploy callback. It is recommended not to change the default value
   
   // ======================
   // 💾 Backup Config (Optional)

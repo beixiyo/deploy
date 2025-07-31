@@ -43,7 +43,11 @@
     "typescript": "^5.7.3"
   },
   "keywords": [
-    "deploy"
+    "deploy",
+    "ssh",
+    "ssh2",
+    "ci/cd",
+    "sftp"
   ],
   "author": "CJL <2662442385@qq.com>",
   "license": "MIT",
