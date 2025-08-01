@@ -1,6 +1,6 @@
 import inquirer from 'inquirer'
 import { logger } from './logger'
-import type { PartRequiredDeployOpts } from './types'
+import type { PartRequiredDeployOpts, DeployStage } from './types'
 import { DeployErrorCode, DeployError } from './types'
 
 
@@ -164,7 +164,7 @@ export class InteractiveDeployer {
   /**
    * 处理用户取消操作
    */
-  handleUserCancel(stage: string): void {
+  handleUserCancel(stage: DeployStage): void {
     logger.warning(`用户取消了 ${stage} 阶段`)
     logger.info('部署流程已中止')
     const error = new DeployError(

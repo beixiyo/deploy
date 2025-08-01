@@ -4,13 +4,26 @@ import type { DeployError } from './error'
 
 
 /**
+ * 部署阶段枚举
+ */
+export type DeployStage =
+  | 'validation'
+  | 'build'
+  | 'compress'
+  | 'connect'
+  | 'upload'
+  | 'deploy'
+  | 'cleanup'
+  | 'unknown'
+
+/**
  * Hook 上下文信息
  */
 export interface HookContext {
   /** 当前配置 */
   opts: PartRequiredDeployOpts
   /** 当前阶段名称 */
-  stage: string
+  stage: DeployStage
   /** 开始时间 */
   startTime: number
   /** 当前服务器信息（如果适用） */

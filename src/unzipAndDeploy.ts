@@ -1,15 +1,23 @@
 import { Client } from 'ssh2'
 import { logger } from './logger'
-import { LogLevel } from './types'
+import { LogLevel, type ConnectInfo } from './types'
 import { DeployErrorCode, DeployError } from './types'
 
+
+/**
+ * 获取服务器显示名称：优先使用 name，没有则使用 host
+ */
+function getServerDisplayName(connectInfo: ConnectInfo, index: number): string {
+  return connectInfo.name || connectInfo.host || `#${index}`
+}
 
 /**
  * 解压并部署
  */
 export async function unzipAndDeploy(
   sshServers: Client[],
-  deployCmd: string
+  deployCmd: string,
+  connectInfos: ConnectInfo[]
 ) {
   if (sshServers.length === 0) {
     logger.warning('没有可用的服务器连接，跳过解压和部署')
@@ -21,7 +29,7 @@ export async function unzipAndDeploy(
 
   // 使用 Promise.allSettled 替代 Promise.all
   const results = await Promise.allSettled(
-    sshServers.map((sshServer, index) => executeDeployCommand(sshServer, deployCmd, index))
+    sshServers.map((sshServer, index) => executeDeployCommand(sshServer, deployCmd, connectInfos[index], index))
   )
 
   // 处理结果
@@ -29,11 +37,14 @@ export async function unzipAndDeploy(
   let failCount = 0
 
   results.forEach((result, index) => {
+    const serverDisplayName = getServerDisplayName(connectInfos[index], index)
+
     if (result.status === 'fulfilled') {
       successCount++
-    } else {
+    }
+    else {
       failCount++
-      logger.error(`服务器 #${index} 部署失败: ${result.reason}`)
+      logger.error(`服务器 ${serverDisplayName} 部署失败: ${result.reason}`)
     }
   })
 
@@ -60,20 +71,23 @@ export async function unzipAndDeploy(
 function executeDeployCommand(
   sshServer: Client,
   deployCmd: string,
+  connectInfo: ConnectInfo,
   serverIndex: number
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    logger.info(`服务器 #${serverIndex} 开始执行部署命令`)
+    const serverDisplayName = getServerDisplayName(connectInfo, serverIndex)
+
+    logger.info(`服务器 ${serverDisplayName} 开始执行部署命令`)
     logger.info(deployCmd)
 
     sshServer.shell((err, stream) => {
       if (err) {
-        logger.error(`服务器 #${serverIndex} 创建 shell 失败`, err)
+        logger.error(`服务器 ${serverDisplayName} 创建 shell 失败`, err)
         return reject(new DeployError(
           DeployErrorCode.DEPLOY_SHELL_FAILED,
-          `服务器 #${serverIndex} 创建 shell 失败`,
+          `服务器 ${serverDisplayName} 创建 shell 失败`,
           err,
-          `#${serverIndex}`
+          serverDisplayName
         ))
       }
 
@@ -84,17 +98,17 @@ function executeDeployCommand(
         .on('exit', (code) => {
           hasExited = true
           if (code === 0) {
-            logger.serverLog(`#${serverIndex}`, '部署命令执行成功', LogLevel.SUCCESS)
+            logger.serverLog(serverDisplayName, '部署命令执行成功', LogLevel.SUCCESS)
             resolve()
           }
           else {
             const errorMsg = `部署命令执行失败 (退出码: ${code})`
-            logger.serverLog(`#${serverIndex}`, errorMsg, LogLevel.ERROR)
+            logger.serverLog(serverDisplayName, errorMsg, LogLevel.ERROR)
             reject(new DeployError(
               DeployErrorCode.DEPLOY_COMMAND_FAILED,
               errorMsg,
               { exitCode: code, errorOutput, deployCmd },
-              `#${serverIndex}`
+              serverDisplayName
             ))
           }
         })
@@ -102,12 +116,12 @@ function executeDeployCommand(
           // 如果流关闭但没有收到 exit 事件，可能是异常关闭
           if (!hasExited) {
             const errorMsg = '部署命令执行过程中连接异常关闭'
-            logger.serverLog(`#${serverIndex}`, errorMsg, LogLevel.ERROR)
+            logger.serverLog(serverDisplayName, errorMsg, LogLevel.ERROR)
             reject(new DeployError(
               DeployErrorCode.DEPLOY_COMMAND_FAILED,
               errorMsg,
               { errorOutput, deployCmd },
-              `#${serverIndex}`
+              serverDisplayName
             ))
           }
         })
@@ -115,7 +129,7 @@ function executeDeployCommand(
           const error = data.toString().trim()
           if (error) {
             errorOutput += error + '\n'
-            logger.serverLog(`#${serverIndex}`, `错误: ${error}`, LogLevel.ERROR)
+            logger.serverLog(serverDisplayName, `错误: ${error}`, LogLevel.ERROR)
           }
         })
 

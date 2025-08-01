@@ -102,7 +102,7 @@ export async function deploy(deployOpts: DeployOpts) {
       if (interactiveDeployer) {
         const shouldContinue = await interactiveDeployer.confirmBuildStage()
         if (!shouldContinue) {
-          interactiveDeployer.handleUserCancel('构建')
+          interactiveDeployer.handleUserCancel('build')
           return
         }
       }
@@ -157,7 +157,7 @@ export async function deploy(deployOpts: DeployOpts) {
       if (interactiveDeployer) {
         const shouldContinue = await interactiveDeployer.confirmCompressStage()
         if (!shouldContinue) {
-          interactiveDeployer.handleUserCancel('压缩')
+          interactiveDeployer.handleUserCancel('compress')
           return
         }
       }
@@ -199,7 +199,7 @@ export async function deploy(deployOpts: DeployOpts) {
       if (interactiveDeployer) {
         const shouldContinue = await interactiveDeployer.confirmUploadAndDeployStage()
         if (!shouldContinue) {
-          interactiveDeployer.handleUserCancel('上传和部署')
+          interactiveDeployer.handleUserCancel('upload')
           return
         }
       }
@@ -263,7 +263,7 @@ export async function deploy(deployOpts: DeployOpts) {
           // 自定义部署或使用默认部署
           deployOpts.customDeploy
             ? await deployOpts.customDeploy(currentSShServers, opts.connectInfos)
-            : await unzipAndDeploy(currentSShServers, opts.deployCmd)
+            : await unzipAndDeploy(currentSShServers, opts.deployCmd, opts.connectInfos)
 
           successCount = opts.connectInfos.length
           logger.success('所有服务器部署成功')
@@ -331,7 +331,7 @@ export async function deploy(deployOpts: DeployOpts) {
             // 自定义部署或使用默认部署
             deployOpts.customDeploy
               ? await deployOpts.customDeploy(currentSShServers, [connectInfo])
-              : await unzipAndDeploy(currentSShServers, opts.deployCmd)
+              : await unzipAndDeploy(currentSShServers, opts.deployCmd, [connectInfo])
 
             successCount++
             logger.success(`服务器 ${serverName} 部署成功`)
