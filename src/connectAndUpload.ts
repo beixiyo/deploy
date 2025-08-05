@@ -163,8 +163,9 @@ function attemptUploadToServer(
                     await backup({
                       sftp,
                       connectInfo,
-                      zipPath,
+                      remoteZipPath,
                       remoteBackupDir,
+                      localZipPath: zipPath,
                       maxBackupCount,
                       sshServer
                     })
