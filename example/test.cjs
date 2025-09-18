@@ -4,6 +4,7 @@ const { resolve } = require('node:path')
 const { homedir } = require('node:os')
 const { readFileSync } = require('node:fs')
 
+const timestamp = Date.now().toString()
 const privateKey = readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8')
 
 /**
@@ -75,7 +76,7 @@ const config = {
     buildCmd: 'pnpm build',
     distDir: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
-    remoteZipPath: '/home/dist.tar.gz',
+    remoteZipPath: `/home/${timestamp}-dist.tar.gz`,
     remoteUnzipDir: '/home/prod-project',
   }
 }
