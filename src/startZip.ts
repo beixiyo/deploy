@@ -1,6 +1,6 @@
 import archiver from 'archiver'
 import { createWriteStream, existsSync, lstatSync, mkdirSync } from 'fs'
-import { dirname } from 'path'
+import { dirname, relative, sep } from 'path'
 import type { DeployOpts } from './types'
 import { logger } from './logger'
 import { updateProgress } from './tool'
@@ -99,10 +99,23 @@ export async function startZip(
       reject(error)
     })
 
+    // 如果 zipPath 位于 distDir 内部，忽略该文件以避免被递归打包
+    const relativeZipPath = relative(distDir, zipPath)
+    const shouldIgnoreZip = relativeZipPath
+      && !relativeZipPath.startsWith('..')
+      && !relativeZipPath.includes(':')
+    const globIgnore = shouldIgnoreZip
+      ? [relativeZipPath.split(sep).join('/')]
+      : []
+
     // 开始压缩
     archive.pipe(output)
     // 文件夹压缩
-    archive.directory(distDir, false)
+    archive.glob('**/*', {
+      cwd: distDir,
+      dot: true,
+      ignore: globIgnore
+    })
     archive.finalize()
 
     // 监听流的打包
