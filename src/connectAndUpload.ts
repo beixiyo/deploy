@@ -6,6 +6,7 @@ import { backup } from './backup'
 import { logger } from './logger'
 import { executeHook } from './hookAndError'
 import { DeployErrorCode, DeployError } from './types'
+import { createHookShell } from './shell'
 
 
 /**
@@ -109,7 +110,8 @@ function attemptUploadToServer(
             connectInfo,
             serverIndex,
             zipPath,
-            remoteZipPath
+            remoteZipPath,
+            shell: createHookShell({ opts: options, connectInfo, serverIndex })
           }
 
           await executeHook(opts.onBeforeUpload, uploadContext)

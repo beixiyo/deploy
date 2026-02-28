@@ -11,6 +11,7 @@ import { dirname } from 'node:path'
 import { InteractiveDeployer, showInteractiveModeInfo, showAutoModeInfo } from './interactive'
 import { executeHook, handleError } from './hookAndError'
 import { DeployErrorCode, DeployError } from './types'
+import { createHookShell } from './shell'
 
 
 export async function deploy(deployOpts: DeployOpts) {
@@ -59,7 +60,8 @@ export async function deploy(deployOpts: DeployOpts) {
         opts,
         stage: 'validation',
         startTime,
-        canRetry: false
+        canRetry: false,
+        shell: createHookShell({ opts })
       }
     )
 
@@ -93,7 +95,8 @@ export async function deploy(deployOpts: DeployOpts) {
       stage: 'build',
       startTime,
       buildCmd: opts.buildCmd,
-      skipBuild: opts.skipBuild
+      skipBuild: opts.skipBuild,
+      shell: createHookShell({ opts })
     }
 
     try {
@@ -131,7 +134,8 @@ export async function deploy(deployOpts: DeployOpts) {
           opts,
           stage: 'build',
           startTime,
-          canRetry: false
+          canRetry: false,
+          shell: createHookShell({ opts })
         }
       )
 
@@ -148,7 +152,8 @@ export async function deploy(deployOpts: DeployOpts) {
       stage: 'compress',
       startTime,
       distDir: opts.distDir,
-      zipPath: opts.zipPath
+      zipPath: opts.zipPath,
+      shell: createHookShell({ opts })
     }
 
     try {
@@ -173,7 +178,8 @@ export async function deploy(deployOpts: DeployOpts) {
           opts,
           stage: 'compress',
           startTime,
-          canRetry: false
+          canRetry: false,
+          shell: createHookShell({ opts })
         }
       )
 
@@ -190,7 +196,8 @@ export async function deploy(deployOpts: DeployOpts) {
       stage: 'connect',
       startTime,
       connectInfos: opts.connectInfos,
-      concurrent: opts.concurrent
+      concurrent: opts.concurrent,
+      shell: createHookShell({ opts })
     }
 
     try {
@@ -214,7 +221,8 @@ export async function deploy(deployOpts: DeployOpts) {
           opts,
           stage: 'connect',
           startTime,
-          canRetry: false
+          canRetry: false,
+          shell: createHookShell({ opts })
         }
       )
 
@@ -245,7 +253,8 @@ export async function deploy(deployOpts: DeployOpts) {
         stage: 'deploy',
         startTime,
         deployCmd: opts.deployCmd,
-        sshClients: []
+        sshClients: [],
+        shell: createHookShell({ opts })
       }
 
       try {
@@ -281,7 +290,8 @@ export async function deploy(deployOpts: DeployOpts) {
             opts,
             stage: 'deploy',
             startTime,
-            canRetry: false
+            canRetry: false,
+            shell: createHookShell({ opts })
           }
         )
 
@@ -305,7 +315,8 @@ export async function deploy(deployOpts: DeployOpts) {
           connectInfo,
           serverIndex: i,
           deployCmd: opts.deployCmd,
-          sshClients: []
+          sshClients: [],
+          shell: createHookShell({ opts, connectInfo, serverIndex: i })
         }
 
         try {
@@ -351,7 +362,8 @@ export async function deploy(deployOpts: DeployOpts) {
               startTime,
               connectInfo,
               serverIndex: i,
-              canRetry: false
+              canRetry: false,
+              shell: createHookShell({ opts, connectInfo, serverIndex: i })
             }
           )
 
@@ -371,7 +383,8 @@ export async function deploy(deployOpts: DeployOpts) {
       stage: 'cleanup',
       startTime,
       zipPath: opts.zipPath,
-      needRemoveZip: opts.needRemoveZip
+      needRemoveZip: opts.needRemoveZip,
+      shell: createHookShell({ opts })
     }
 
     try {
@@ -404,7 +417,8 @@ export async function deploy(deployOpts: DeployOpts) {
           opts,
           stage: 'cleanup',
           startTime,
-          canRetry: false
+          canRetry: false,
+          shell: createHookShell({ opts })
         }
       )
 
@@ -442,7 +456,8 @@ export async function deploy(deployOpts: DeployOpts) {
         opts,
         stage: 'unknown',
         startTime,
-        canRetry: false
+        canRetry: false,
+        shell: createHookShell({ opts })
       }
     )
 

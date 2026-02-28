@@ -9,7 +9,7 @@ const privateKey = readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8')
 
 /**
  * @type {import('@jl-org/deploy').ConnectInfo[]}
- */
+  */
 const connectInfos = [
   {
     host: 'yourHost',
@@ -20,14 +20,19 @@ const connectInfos = [
 ]
 
 /**
- * 命令执行的模式
- * @example node deploy.cjs dev
- */
-const mode = process.argv.slice(2)[0] || 'dev'
+ * @typedef {'dev' | 'production'} Mode
+*/
 
 /**
- * @type {Record<'dev' | 'production', Omit<import('@jl-org/deploy').DeployOpts, 'connectInfos'>>}
- */
+ * 命令执行的模式
+ * @example node deploy.cjs dev
+ * @type {Mode}
+  */
+const mode = /** @type {Mode} * / (process.argv.slice(2)[0] || 'dev')
+
+/**
+ * @type {Record<Mode, Omit<import('@jl-org/deploy').DeployOpts, 'connectInfos'>>}
+  */
 const config = {
   dev: {
     buildCmd: 'pnpm build',
@@ -70,7 +75,34 @@ const config = {
 
     //     server.connect(connectInfos[0])
     //   })
-    // }
+    // },
+
+    onAfterDeploy: async (context) => {
+      console.log('====================> onAfterDeploy 部署完成！')
+      const { shell } = context
+      const [execResult, spawnResult] = await Promise.all([
+        shell.exec('echo "部署完成" > /home/dc/workspace/exec.txt'),
+        shell.spawn('echo "部署完成" > /home/dc/workspace/spawn.txt')
+      ])
+
+      console.log('execResult', execResult)
+      console.log('spawnResult', spawnResult)
+
+      await shell.sftp(async (sftp) => {
+        const remotePath = '/home/dc/workspace/package.json'
+        await new Promise((res, rej) => {
+          sftp.fastPut(resolve(__dirname, '../package.json'), remotePath, (err) => {
+            if (err) {
+              console.error('====================> sftp 上传失败:', err)
+              rej(err)
+              return
+            }
+            console.log('====================> sftp 上传成功')
+            res('success')
+          })
+        })
+      })
+    },
   },
   production: {
     buildCmd: 'pnpm build',
@@ -82,7 +114,13 @@ const config = {
 }
 
 const curConfig = config[mode]
-deploy({
-  ...curConfig,
-  connectInfos,
-})
+if (curConfig) {
+  deploy({
+    ...curConfig,
+    connectInfos,
+  })
+}
+else {
+  console.error(`错误: 未知的部署模式 '${mode}'，支持的模式: ${Object.keys(config).join(', ')}`)
+  process.exit(1)
+}

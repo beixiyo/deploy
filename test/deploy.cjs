@@ -33,7 +33,7 @@ loadEnv()
 
 /**
  * @type {import('@jl-org/deploy').ConnectInfo[]}
- */
+  */
 const connectInfos = [
   {
     host: getEnv('SSH_HOST', '', true),
@@ -52,11 +52,11 @@ const mode = process.argv.slice(2)[0] || 'dev'
 
 /**
  * @type {Record<string, Omit<import('@jl-org/deploy').DeployOpts, 'connectInfos'>>}
- */
+  */
 const config = {
   dev: {
     buildCmd: getEnv('BUILD_CMD', 'pnpm build'),
-    distDir: resolve(__dirname, './dist'),
+    distDir: resolve(__dirname, '../dist'),
     zipPath: resolve(__dirname, '../dist.tar.gz'),
     remoteZipPath: getEnv('REMOTE_ZIP_PATH', '/home/test-deploy/dist.tar.gz'),
     remoteUnzipDir: getEnv('REMOTE_UNZIP_DIR', '/home/test-deploy/project'),
@@ -161,9 +161,32 @@ const config = {
     // onBeforeDeploy: async (context) => {
     //   console.log('====================> onBeforeDeploy 开始部署...', context.sshClients.length)
     // },
-    // onAfterDeploy: async (context) => {
-    //   console.log('====================> onAfterDeploy 部署完成！')
-    // },
+    onAfterDeploy: async (context) => {
+      console.log('====================> onAfterDeploy 部署完成！')
+      const { shell } = context
+      const [execResult, spawnResult] = await Promise.all([
+        shell.exec('echo "部署完成" > /home/dc/workspace/exec.txt'),
+        shell.spawn('echo "部署完成" > /home/dc/workspace/spawn.txt')
+      ])
+
+      console.log('execResult', execResult)
+      console.log('spawnResult', spawnResult)
+
+      await shell.sftp(async (sftp) => {
+        const remotePath = '/home/dc/workspace/package.json'
+        await new Promise((res, rej) => {
+          sftp.fastPut(resolve(__dirname, '../package.json'), remotePath, (err) => {
+            if (err) {
+              console.error('====================> sftp 上传失败:', err)
+              rej(err)
+              return
+            }
+            console.log('====================> sftp 上传成功')
+            res('success')
+          })
+        })
+      })
+    },
 
     // // 清理阶段 hooks
     // onBeforeCleanup: async (context) => {
@@ -179,7 +202,7 @@ const config = {
 
     //   // 返回 true 表示错误已处理，继续执行；返回 false 或不返回表示重新抛出错误
     //   return false
-    // }
+    // },
   }
 }
 

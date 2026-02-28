@@ -335,6 +335,46 @@ For more error codes, please refer to [DeployErrorCode](src/types/error.ts) enum
 
 ---
 
+## 🐛 Common Errors
+
+### Correct Usage of `shell.sftp` in Hooks
+
+The `context.shell` in each stage hook provides `exec`, `spawn`, and `sftp` for remote operations. `sftp` uses ssh2's SFTPWrapper and supports APIs like `fastPut`, `fastGet`, `readdir`, `mkdir`, `stat`, etc.
+
+**❌ Wrong**: `fastPut` / `fastGet` are callback-based APIs. Calling them without `await` causes the task to return immediately, closing the SFTP connection before the transfer completes:
+
+```js
+onAfterDeploy: async (context) => {
+  const { shell } = context
+  shell.sftp(async (sftp) => {
+    sftp.fastPut(localPath, remotePath, (err) => {
+      if (err) console.error(err)
+    })
+    // ⚠️ The async function returns here immediately, connection closes, upload may be interrupted!
+  })
+}
+```
+
+**✅ Correct**: Wrap the callback-based API in a Promise and `await` it so the connection stays open until the transfer completes:
+
+```js
+onAfterDeploy: async (context) => {
+  const { shell } = context
+  await shell.sftp(async (sftp) => {
+    await new Promise((resolve, reject) => {
+      sftp.fastPut(localPath, remotePath, (err) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
+  })
+}
+```
+
+**Note**: Each `shell.sftp(task)` call creates a new SSH connection and closes it when the task returns. All async operations inside the task must be `await`ed so the connection remains open until they finish.
+
+---
+
 ## ⚠️ Important Notes
 
 1. 📁 `remoteUnzipDir` should not be in the same directory as `remoteZipPath`, because the deployment process will first delete the `remoteUnzipDir` directory

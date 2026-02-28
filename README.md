@@ -335,6 +335,46 @@ exit
 
 ---
 
+## 🐛 常见错误
+
+### Hook 中 `shell.sftp` 正确用法
+
+各阶段 Hook 的 `context.shell` 提供 `exec`、`spawn`、`sftp` 三种远程能力。`sftp` 基于 ssh2 的 SFTPWrapper，可调用 `fastPut`、`fastGet`、`readdir`、`mkdir`、`stat` 等 API
+
+**❌ 错误写法**：`fastPut` / `fastGet` 等是回调式 API，直接调用而不 `await` 会导致 task 过早返回，SFTP 连接在上传/下载完成前即被关闭：
+
+```js
+onAfterDeploy: async (context) => {
+  const { shell } = context
+  shell.sftp(async (sftp) => {
+    sftp.fastPut(localPath, remotePath, (err) => {
+      if (err) console.error(err)
+    })
+    // ⚠️ 此处 async 函数立即返回，连接被关闭，上传可能中断！
+  })
+}
+```
+
+**✅ 正确写法**：将回调式 API 包装为 Promise 并 `await`，确保传输完成后再关闭连接：
+
+```js
+onAfterDeploy: async (context) => {
+  const { shell } = context
+  await shell.sftp(async (sftp) => {
+    await new Promise((resolve, reject) => {
+      sftp.fastPut(localPath, remotePath, (err) => {
+        if (err) reject(err)
+        else resolve()
+      })
+    })
+  })
+}
+```
+
+**📌 要点**：`shell.sftp(task)` 每次调用会新建 SSH 连接，task 返回后自动关闭。task 内所有异步操作都需 `await` 完成后，连接才会保持到操作结束。
+
+---
+
 ## ⚠️ 注意事项
 
 1. 📁 `remoteUnzipDir` 不应与 `remoteZipPath` 的目录相同，因为部署过程中会先删除 `remoteUnzipDir` 目录
