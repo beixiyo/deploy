@@ -22,16 +22,18 @@
   "scripts": {
     "build": "tsup",
     "prepublishOnly": "npm run build",
-    "test": "node test/deploy.cjs",
+    "test": "bun test test/",
+    "test:integration": "node test/deploy.cjs",
     "test:module": "node test/moduleTest/test.cjs && node test/moduleTest/test.mjs"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
+    "@types/bun": "^1.3.9",
     "archiver": "7.0.1",
-    "kleur": "^4.1.5",
     "inquirer": "^12.9.0",
+    "kleur": "^4.1.5",
     "ssh2": "1.16.0"
   },
   "devDependencies": {
