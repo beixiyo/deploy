@@ -1,6 +1,6 @@
 {
   "name": "@jl-org/deploy",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "一键部署项目到服务器",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -22,9 +22,7 @@
   "scripts": {
     "build": "tsup",
     "prepublishOnly": "npm run build",
-    "test": "bun test test/",
-    "test:integration": "node test/deploy.cjs",
-    "test:module": "node test/moduleTest/test.cjs && node test/moduleTest/test.mjs"
+    "test": "bun test test/"
   },
   "engines": {
     "node": ">=18"

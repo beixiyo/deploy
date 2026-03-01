@@ -1,7 +1,8 @@
-import { Client, type SFTPWrapper } from 'ssh2'
+import type { SFTPWrapper } from 'ssh2'
 import { logger } from './logger'
 import { DeployErrorCode, DeployError, LogLevel } from './types'
 import type { ConnectInfo, HookShell, PartRequiredDeployOpts, RemoteShellOptions, ShellExecResult } from './types'
+import { sshRemote, sftpRemote } from './remote'
 
 function resolveTargetServer(
   init: HookShellInitContext,
@@ -52,41 +53,6 @@ function resolveTargetServer(
   }
 }
 
-async function withSshClient<T>(
-  connectInfo: ConnectInfo,
-  serverName: string,
-  task: (client: Client) => Promise<T>
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const sshServer = new Client()
-
-    sshServer
-      .on('ready', async () => {
-        try {
-          const result = await task(sshServer)
-          sshServer.end()
-          sshServer.destroy()
-          resolve(result)
-        }
-        catch (err) {
-          sshServer.end()
-          sshServer.destroy()
-          reject(err)
-        }
-      })
-      .on('error', (err) => {
-        logger.serverLog(serverName, `远程 Shell 连接失败: ${err.message}`, LogLevel.ERROR)
-        reject(new DeployError(
-          DeployErrorCode.CONNECT_SSH_FAILED,
-          `远程 Shell 连接失败: ${err.message}`,
-          err,
-          serverName
-        ))
-      })
-      .connect(connectInfo)
-  })
-}
-
 async function runRemoteCommand(
   init: HookShellInitContext,
   cmd: string,
@@ -101,7 +67,7 @@ async function runRemoteCommand(
 
   logger.serverLog(serverName, `执行远程命令: ${remoteCmd}`, LogLevel.INFO)
 
-  return withSshClient(connectInfo, serverName, (sshServer) => {
+  return sshRemote(connectInfo, (sshServer) => {
     return new Promise<ShellExecResult>((resolve, reject) => {
       sshServer.exec(remoteCmd, (err, stream) => {
         if (err) {
@@ -162,28 +128,8 @@ async function runSftpTask<T>(
   task: (sftp: SFTPWrapper) => Promise<T>,
   options?: RemoteShellOptions
 ): Promise<T> {
-  const { connectInfo, serverName } = resolveTargetServer(init, options)
-
-  logger.serverLog(serverName, '建立 SFTP 连接', LogLevel.INFO)
-
-  return withSshClient(connectInfo, serverName, (sshServer) => {
-    return new Promise<T>((resolve, reject) => {
-      sshServer.sftp((err, sftp) => {
-        if (err) {
-          logger.serverLog(serverName, `SFTP 初始化失败: ${err.message}`, LogLevel.ERROR)
-          return reject(new DeployError(
-            DeployErrorCode.CONNECT_SFTP_FAILED,
-            `SFTP 初始化失败: ${err.message}`,
-            err,
-            serverName
-          ))
-        }
-        task(sftp!)
-          .then(resolve)
-          .catch(reject)
-      })
-    })
-  })
+  const { connectInfo } = resolveTargetServer(init, options)
+  return sftpRemote(connectInfo, task)
 }
 
 /**
