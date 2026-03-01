@@ -263,6 +263,43 @@ try {
 }
 ```
 
+### 🔌 Fully Custom Workflow: Composing Low-Level APIs
+
+When you need a fully custom workflow (e.g. only compress, only upload, or a custom order of steps), you can use the following APIs directly without running the full `deploy` flow.
+
+| API | Description |
+| --- | --- |
+| **`sshRemote(connectInfo, task)`** | Establish SSH connection and run a callback. Inside `task(client)` you can use `client.exec`, `client.shell`, etc. Returns the return value of `task`. |
+| **`sftpRemote(connectInfo, task)`** | Establish SFTP connection and run a callback. Inside `task(sftp)` you can use `sftp.fastPut`, `fastGet`, `readdir`, `mkdir`, etc. Returns the return value of `task`. |
+| **`compress(options)`** | Pack a directory into tar.gz. `options`: `{ distDir, zipPath, onProgress? }`, returns `Promise<{ bytesWritten }>`. No console logging; suitable for scripts or custom pipelines. |
+| **`startZip(opts)`** | Same as `compress` but with console logging and progress bar; suitable for human-readable deployment. `opts`: `{ distDir, zipPath }`. |
+
+Example: compress only, or compress then upload via SFTP:
+
+```js
+import { compress, sftpRemote } from '@jl-org/deploy'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { homedir } from 'node:os'
+
+// Compress only
+const { bytesWritten } = await compress({
+  distDir: resolve(__dirname, '../dist'),
+  zipPath: resolve(__dirname, '../dist.tar.gz'),
+  onProgress(processed, total) { console.log(processed, total) }
+})
+
+// Then upload via SFTP
+await sftpRemote(
+  { host: '192.168.1.100', username: 'root', privateKey: readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8') },
+  async (sftp) => {
+    await new Promise((res, rej) => {
+      sftp.fastPut(resolve(__dirname, '../dist.tar.gz'), '/home/dist.tar.gz', (err) => (err ? rej(err) : res()))
+    })
+  }
+)
+```
+
 ---
 
 ## 📋 Configuration Options

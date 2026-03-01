@@ -216,4 +216,16 @@ export type PartRequiredDeployOpts = PartRequired<
   'concurrent'
 >
 
+/**
+ * 独立压缩函数的入参，仅包含压缩所需字段
+ */
+export interface CompressOptions {
+  /** 待压缩的目录 */
+  distDir: string
+  /** 输出的 tar.gz 文件路径 */
+  zipPath: string
+  /** 可选：压缩进度回调 (已处理字节数, 总字节数) */
+  onProgress?: (processedBytes: number, totalBytes: number) => void
+}
+
 export type ConnectInfo = (PartRequired<ConnectConfig, 'host'> & { name?: string })

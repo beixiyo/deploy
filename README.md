@@ -263,6 +263,43 @@ try {
 }
 ```
 
+### 🔌 全自定义流程：组合底层 API
+
+当需要完全自定义流程（例如只做压缩、只做上传，或自定执行顺序）时，可直接使用以下 API 自行组合，无需走完整 `deploy` 流程
+
+| API | 说明 |
+| --- | --- |
+| **`sshRemote(connectInfo, task)`** | 建立 SSH 连接并执行回调。`task(client)` 内可使用 `client.exec`、`client.shell` 等执行任意命令，返回 `task` 的返回值。 |
+| **`sftpRemote(connectInfo, task)`** | 建立 SFTP 连接并执行回调。`task(sftp)` 内可使用 `sftp.fastPut`、`fastGet`、`readdir`、`mkdir` 等完成文件上传/下载，返回 `task` 的返回值。 |
+| **`compress(options)`** | 将目录打成 tar.gz。`options`: `{ distDir, zipPath, onProgress? }`，返回 `Promise<{ bytesWritten }>`。无控制台日志，适合脚本或自定义流水线。 |
+| **`startZip(opts)`** | 与 `compress` 相同能力，但带控制台日志与进度条，适合人类可读的部署流程。`opts`: `{ distDir, zipPath }`。 |
+
+示例：仅压缩、或先压缩再通过 SFTP 上传：
+
+```js
+import { compress, sftpRemote } from '@jl-org/deploy'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { homedir } from 'node:os'
+
+// 仅压缩
+const { bytesWritten } = await compress({
+  distDir: resolve(__dirname, '../dist'),
+  zipPath: resolve(__dirname, '../dist.tar.gz'),
+  onProgress(processed, total) { console.log(processed, total) }
+})
+
+// 再通过 SFTP 上传到远程
+await sftpRemote(
+  { host: '192.168.1.100', username: 'root', privateKey: readFileSync(resolve(homedir(), '.ssh/id_rsa'), 'utf-8') },
+  async (sftp) => {
+    await new Promise((res, rej) => {
+      sftp.fastPut(resolve(__dirname, '../dist.tar.gz'), '/home/dist.tar.gz', (err) => (err ? rej(err) : res()))
+    })
+  }
+)
+```
+
 ---
 
 ## 📋 配置选项
