@@ -16,7 +16,7 @@ export interface DeployOpts {
   buildCmd?: string
   /**
    * 远程服务器部署命令，和 customDeploy 回调冲突
-   * ### 注意：传递此参数，末尾必须有回车，否则无法执行。此 bug 问题在于 ssh2
+   * 末尾无换行会自动补全（getOpts + unzipAndDeploy 双重兜底）
    * @default
    * `
    *   cd ${remoteCwd} &&
@@ -118,6 +118,7 @@ export interface DeployOpts {
   customUpload?: (createServer: () => Client, connectInfos: ConnectInfo[]) => Promise<Client[]>
   /**
    * 自定义部署行为，如果传递了该函数，则会覆盖默认部署行为，deployCmd 参数不会生效
+   * 若在回调中使用 client.shell() 并 stream.write/end 发送命令，需确保末尾有换行，可导入 prepareShellCmd
    */
   customDeploy?: (servers: Client[], connectInfos: ConnectInfo[]) => Promise<void>
 

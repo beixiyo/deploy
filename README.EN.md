@@ -415,7 +415,7 @@ onAfterDeploy: async (context) => {
 ## ⚠️ Important Notes
 
 1. 📁 `remoteUnzipDir` should not be in the same directory as `remoteZipPath`, because the deployment process will first delete the `remoteUnzipDir` directory
-2. 📝 When using custom `deployCmd`, the command must end with a newline character
+2. 📝 When using custom `deployCmd`, a trailing newline is recommended (auto-appended if missing). Internal fallback via `prepareShellCmd`; you may import it: `import { prepareShellCmd } from '@jl-org/deploy'`. Interactive shells require newline to execute; see [ssh2#801](https://github.com/mscdex/ssh2/issues/801), [ssh2#783](https://github.com/mscdex/ssh2/issues/783)
 3. ⚡ When `skipBuild` is true, it will check if the build output directory exists, and report an error if it doesn't exist
 4. 🤖 In CI/CD environments, use `interactive: false` to avoid blocking
 5. 🎣 Using hooks allows you to execute custom logic at various stages of the deployment process, facilitating integration of monitoring, notifications, and other features

@@ -66,7 +66,9 @@ export async function unzipAndDeploy(
 }
 
 /**
- * 在单个服务器上执行部署命令
+ * 在单个服务器上执行部署命令。
+ * 使用 exec() 而非 shell()：exec 以非交互模式运行，命令结束后 stream 自动关闭，
+ * 不受服务器登录 shell 类型（bash/zsh/fish）和初始化脚本的影响。
  */
 function executeDeployCommand(
   sshServer: Client,
@@ -80,60 +82,50 @@ function executeDeployCommand(
     logger.info(`服务器 ${serverDisplayName} 开始执行部署命令`)
     logger.info(deployCmd)
 
-    sshServer.shell((err, stream) => {
+    sshServer.exec(deployCmd, (err, stream) => {
       if (err) {
-        logger.error(`服务器 ${serverDisplayName} 创建 shell 失败`, err)
+        logger.error(`服务器 ${serverDisplayName} 执行命令失败`, err)
         return reject(new DeployError(
           DeployErrorCode.DEPLOY_SHELL_FAILED,
-          `服务器 ${serverDisplayName} 创建 shell 失败`,
+          `服务器 ${serverDisplayName} 执行命令失败`,
           err,
           serverDisplayName
         ))
       }
 
-      let hasExited = false
       let errorOutput = ''
 
-      stream
-        .on('exit', (code) => {
-          hasExited = true
-          if (code === 0) {
-            logger.serverLog(serverDisplayName, '部署命令执行成功', LogLevel.SUCCESS)
-            resolve()
-          }
-          else {
-            const errorMsg = `部署命令执行失败 (退出码: ${code})`
-            logger.serverLog(serverDisplayName, errorMsg, LogLevel.ERROR)
-            reject(new DeployError(
-              DeployErrorCode.DEPLOY_COMMAND_FAILED,
-              errorMsg,
-              { exitCode: code, errorOutput, deployCmd },
-              serverDisplayName
-            ))
-          }
-        })
-        .on('close', () => {
-          // 如果流关闭但没有收到 exit 事件，可能是异常关闭
-          if (!hasExited) {
-            const errorMsg = '部署命令执行过程中连接异常关闭'
-            logger.serverLog(serverDisplayName, errorMsg, LogLevel.ERROR)
-            reject(new DeployError(
-              DeployErrorCode.DEPLOY_COMMAND_FAILED,
-              errorMsg,
-              { errorOutput, deployCmd },
-              serverDisplayName
-            ))
-          }
-        })
-        .stderr.on('data', data => {
-          const error = data.toString().trim()
-          if (error) {
-            errorOutput += error + '\n'
-            logger.serverLog(serverDisplayName, `错误: ${error}`, LogLevel.ERROR)
-          }
-        })
+      stream.on('data', (data: Buffer) => {
+        const text = data.toString().trim()
+        if (text) {
+          logger.serverLog(serverDisplayName, text, LogLevel.INFO)
+        }
+      })
 
-      stream.end(deployCmd)
+      stream.stderr.on('data', (data: Buffer) => {
+        const error = data.toString().trim()
+        if (error) {
+          errorOutput += error + '\n'
+          logger.serverLog(serverDisplayName, `错误: ${error}`, LogLevel.ERROR)
+        }
+      })
+
+      stream.on('close', (code: number | null) => {
+        if (code === 0 || code === null) {
+          logger.serverLog(serverDisplayName, '部署命令执行成功', LogLevel.SUCCESS)
+          resolve()
+        }
+        else {
+          const errorMsg = `部署命令执行失败 (退出码: ${code})`
+          logger.serverLog(serverDisplayName, errorMsg, LogLevel.ERROR)
+          reject(new DeployError(
+            DeployErrorCode.DEPLOY_COMMAND_FAILED,
+            errorMsg,
+            { exitCode: code, errorOutput, deployCmd },
+            serverDisplayName
+          ))
+        }
+      })
     })
   })
 }

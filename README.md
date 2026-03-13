@@ -415,7 +415,7 @@ onAfterDeploy: async (context) => {
 ## ⚠️ 注意事项
 
 1. 📁 `remoteUnzipDir` 不应与 `remoteZipPath` 的目录相同，因为部署过程中会先删除 `remoteUnzipDir` 目录
-2. 📝 使用自定义 `deployCmd` 时，命令末尾必须有换行符
+2. 📝 使用自定义 `deployCmd` 时，命令末尾建议有换行符（无则自动补全）。内部已用 `prepareShellCmd` 兜底，亦可手动调用 `import { prepareShellCmd } from '@jl-org/deploy'`。交互式 shell 需收到换行才认为命令完整，详见 [ssh2#801](https://github.com/mscdex/ssh2/issues/801)、[ssh2#783](https://github.com/mscdex/ssh2/issues/783)
 3. ⚡ `skipBuild` 为 true 时，会检查构建产物目录是否存在，不存在则报错
 4. 🤖 在 CI/CD 环境中，使用 `interactive: false` 以避免阻塞
 5. 🎣 使用 hooks 可以在部署流程的各个阶段执行自定义逻辑，便于集成监控、通知等功能

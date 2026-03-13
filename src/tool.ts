@@ -64,6 +64,35 @@ export function toUnixPath(path: string): string {
   return path.replace(/\\/g, '/')
 }
 
+/** 用于 prepareShellCmd 的配置项 */
+export interface PrepareShellCmdOpts {
+  /** 确保命令末尾有换行符。交互式 shell 需收到换行才认为命令完整，否则可能不执行或行为不一致。@default true */
+  newline?: boolean
+  /** 确保命令以 exit 结尾，避免部分服务器（如 GCP）收到 EOF 后不退出、导致 exit/close 永不触发。@default true */
+  exit?: boolean
+}
+
+/**
+ * 将命令包装为适合 ssh2 shell() 发送的格式。
+ * @param cmd 原始命令
+ * @param opts 包装选项，默认 { newline: true, exit: true } 全部包装
+ * @see https://github.com/mscdex/ssh2/issues/801
+ * @see https://github.com/mscdex/ssh2/issues/783
+ * @see https://github.com/mscdex/ssh2/issues/429
+ */
+export function prepareShellCmd(cmd: string, opts?: PrepareShellCmdOpts): string {
+  const { newline = true, exit: needExit = true } = opts ?? {}
+  let result = cmd
+  if (newline) {
+    result = result.endsWith('\n') ? result : `${result}\n`
+  }
+  if (needExit) {
+    const lastLine = result.trimEnd().split('\n').filter(Boolean).pop()?.trim()
+    result = lastLine === 'exit' ? result : `${result}exit\n`
+  }
+  return result
+}
+
 export function getLocalToday() {
   const d = new Date()
     .toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' })
