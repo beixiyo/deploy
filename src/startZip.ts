@@ -1,4 +1,4 @@
-import archiver from 'archiver'
+import { TarArchive } from 'archiver'
 import { createWriteStream, existsSync, lstatSync, mkdirSync } from 'fs'
 import { dirname, relative, sep } from 'path'
 import type { CompressOptions, DeployOpts } from './types'
@@ -67,7 +67,7 @@ export function compress(options: CompressOptions): Promise<{ bytesWritten: numb
   const globIgnore = getArchiveIgnoreGlob(distDir, zipPath)
 
   return new Promise((resolve, reject) => {
-    const archive = archiver('tar', {
+    const archive = new TarArchive({
       gzip: true,
       gzipOptions: { level: 9 },
     })

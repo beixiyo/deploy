@@ -31,8 +31,14 @@ test('deploy 连接本地完成部署流程', async () => {
     zipPath,
     remoteZipPath: `${remoteBase}/dist.tar.gz`,
     remoteUnzipDir: `${remoteBase}/project`,
-    remoteCwd: '/',
+    remoteCwd: remoteBase,
     remoteBackupDir: `${remoteBase}/backup`,
+    deployCmd: [
+      `rm -rf ${remoteBase}/project`,
+      `mkdir -p ${remoteBase}/project`,
+      `tar -xzf ${remoteBase}/dist.tar.gz -C ${remoteBase}/project`,
+      `rm -f ${remoteBase}/dist.tar.gz`,
+    ].join(' && '),
     skipBuild: true,
     interactive: false,
     onAfterDeploy: async (context) => {
