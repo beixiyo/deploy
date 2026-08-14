@@ -14,7 +14,7 @@ export function getOpts(opts: DeployOpts): PartRequiredDeployOpts {
    */
   const deployCmd = opts.deployCmd ?? [
     `cd ${toUnixPath(remoteCwd)}`,
-    `sudo rm -rf ${toUnixPath(opts.remoteUnzipDir)}`,
+    `rm -rf ${toUnixPath(opts.remoteUnzipDir)}`,
     `mkdir -p ${toUnixPath(opts.remoteUnzipDir)}`,
     `tar -xzf ${toUnixPath(opts.remoteZipPath)} -C ${toUnixPath(opts.remoteUnzipDir)}`,
     `rm -rf ${toUnixPath(opts.remoteZipPath)}`,
